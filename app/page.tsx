@@ -107,6 +107,16 @@ export default function Home() {
               <div className="absolute top-2 right-4 w-32 h-24 bg-white/90 shadow-sm rotate-3 group-hover:rotate-12 transition-transform duration-500 z-0 border border-black/5" />
             </motion.div>
           </Link>
+
+          <Link href="/field-notes" className="block" onMouseEnter={() => setHoveredArtifact("notes")} onMouseLeave={() => setHoveredArtifact(null)}>
+            <motion.div
+              whileTap={{ scale: 1.05 }}
+              className="bg-gray-200 w-full max-w-[240px] h-20 border-l-8 border-yellow-600 p-3 shadow-xl cursor-pointer flex flex-col justify-center items-center -rotate-2 border border-gray-300 ml-6"
+            >
+              <span className="font-display text-lg text-black leading-none text-center">FIELD<br />NOTES</span>
+              <span className="text-[10px] font-mono mt-1 text-gray-500 uppercase tracking-[0.2em]">Archive</span>
+            </motion.div>
+          </Link>
         </div>
       </div>
 
@@ -219,6 +229,22 @@ export default function Home() {
         </Link>
       </div>
 
+      {/* 5. Field Notes (Bottom Center) - desktop only */}
+      <div className="hidden md:block absolute bottom-20 left-1/2 -translate-x-1/2 z-10"
+        onMouseEnter={() => setHoveredArtifact("notes")}
+        onMouseLeave={() => setHoveredArtifact(null)}
+      >
+        <Link href="/field-notes">
+          <motion.div
+            whileHover={{ scale: 1.15, rotate: -2, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)" }}
+            className="bg-gray-200 w-44 h-28 border-l-8 border-yellow-600 p-4 shadow-xl cursor-pointer flex flex-col justify-center items-center rotate-4 border border-gray-300"
+          >
+            <span className="font-display text-xl text-black leading-none text-center">FIELD<br />NOTES</span>
+            <span className="text-[10px] font-mono mt-2 text-gray-500 uppercase tracking-[0.2em]">Archive</span>
+          </motion.div>
+        </Link>
+      </div>
+
       {/* --- STRINGS --- */}
       <div className="absolute inset-0 pointer-events-none hidden md:block">
         {/* Strings connected to center hub (50/50) */}
@@ -244,6 +270,12 @@ export default function Home() {
         <RedString
           x1Percent={82} y1Percent={76} x2Percent={50} y2Percent={50} delay={1.1}
           tension={hoveredArtifact === "evidence" || hoveredArtifact === "hub" ? 1 : 0}
+        />
+
+        {/* Field Notes (centered at 50/80) */}
+        <RedString
+          x1Percent={50} y1Percent={85} x2Percent={50} y2Percent={50} delay={1.3}
+          tension={hoveredArtifact === "notes" || hoveredArtifact === "hub" ? 1 : 0}
         />
       </div>
 

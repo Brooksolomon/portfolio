@@ -13,6 +13,7 @@ const items = [
     { name: "EVIDENCE", href: "/evidence" },
     { name: "MODUS OPERANDI", href: "/modus-operandi" },
     { name: "TIMELINE", href: "/timeline" },
+    { name: "FIELD NOTES", href: "/field-notes" },
 ];
 
 export function Navigation() {
