@@ -74,11 +74,7 @@ export default async function FieldNoteDetail({ params }: { params: Promise<{ sl
                 </div>
 
                 {/* EditorRenderer component */}
-                <div className="mb-24 bg-[#0a0a0a]/60 backdrop-blur-md p-6 md:p-12 rounded-3xl border border-white/5 shadow-2xl relative group hover:border-red-900/20 transition-all duration-700">
-                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-red-900/20 to-transparent group-hover:via-red-500/40 transition-all duration-1000" />
-                    <div className="absolute top-1/2 left-0 w-1 h-32 bg-gradient-to-b from-transparent via-red-900/40 to-transparent -translate-y-1/2 rounded-r-md group-hover:h-48 group-hover:via-red-500/60 transition-all duration-700 delay-100" />
-                    <FieldNoteClientRenderer content={blog.content} />
-                </div>
+                <FieldNoteClientRenderer content={blog.content} />
 
                 {/* Comments / Annotations Section */}
                 <div className="relative">
