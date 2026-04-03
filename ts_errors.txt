@@ -1,0 +1,14 @@
+app/admin/editor/[id]/EditorClientWrapper.tsx(5,68): error TS2307: Cannot find module '@tiptap/react' or its corresponding type declarations.
+app/admin/editor/[id]/EditorClientWrapper.tsx(45,22): error TS7031: Binding element 'editor' implicitly has an 'any' type.
+app/field-notes/[slug]/FieldNoteClientRenderer.tsx(3,42): error TS2307: Cannot find module '@tiptap/react' or its corresponding type declarations.
+app/field-notes/FieldNotesList.tsx(46,25): error TS2322: Type '{ hidden: { opacity: number; y: number; scale: number; }; show: { opacity: number; y: number; scale: number; transition: { type: string; stiffness: number; damping: number; }; }; }' is not assignable to type 'Variants'.
+  Property 'show' is incompatible with index signature.
+    Type '{ opacity: number; y: number; scale: number; transition: { type: string; stiffness: number; damping: number; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; scale: number; transition: { type: string; stiffness: number; damping: number; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; scale: number; transition: { type: string; stiffness: number; damping: number; }; }' is not assignable to type '{ transition?: Transition<any> | undefined; transitionEnd?: ResolvedValues$1 | undefined; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ type: string; stiffness: number; damping: number; }' is not assignable to type 'Transition<any> | undefined'.
+              Type '{ type: string; stiffness: number; damping: number; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ type: string; stiffness: number; damping: number; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'type' are incompatible.
+                    Type 'string' is not assignable to type 'AnimationGeneratorType | undefined'.
