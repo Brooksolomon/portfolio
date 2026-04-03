@@ -74,7 +74,8 @@ export default async function FieldNoteDetail({ params }: { params: Promise<{ sl
                 </div>
 
                 {/* EditorRenderer component */}
-                <FieldNoteClientRenderer content={blog.content} />
+                {/* EditorRenderer component */}
+                <FieldNoteClientRenderer content={blog.content} slug={slug} title={blog.title} />
 
                 {/* Comments / Annotations Section */}
                 <div className="relative">

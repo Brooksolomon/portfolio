@@ -6,7 +6,9 @@ import Image from '@tiptap/extension-image'
 import Youtube from '@tiptap/extension-youtube'
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Type, Moon, Sun, Clock, BookOpen, Quote } from 'lucide-react'
+import { Type, Moon, Sun, Clock, BookOpen, Quote, History, Copy, CheckCircle } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { toBlob } from 'html-to-image'
 
 // Helper to calculate reading time
 const calculateReadingTime = (text: string) => {
@@ -14,16 +16,26 @@ const calculateReadingTime = (text: string) => {
     return Math.max(1, Math.ceil(words / 200)) // 200 words per minute
 }
 
-export default function FieldNoteClientRenderer({ content }: { content: any }) {
+export default function FieldNoteClientRenderer({ content, slug, title }: { content: any, slug: string, title: string }) {
     const [progress, setProgress] = useState(0)
     const [readingTime, setReadingTime] = useState(0)
     const [toc, setToc] = useState<{ id: string; text: string; level: number }[]>([])
     const [theme, setTheme] = useState<'dark' | 'light'>('dark')
     const [fontSize, setFontSize] = useState<number>(1)
     
+    // Share Quote State
     const [showShareMenu, setShowShareMenu] = useState(false)
     const [sharePosition, setSharePosition] = useState({ top: 0, left: 0 })
     const [selectedText, setSelectedText] = useState('')
+    const [isGeneratingQuote, setIsGeneratingQuote] = useState(false)
+    const [copiedQuote, setCopiedQuote] = useState(false)
+    const quoteNodeRef = useRef<HTMLDivElement>(null)
+    
+    // Live Users State
+    const [activeReaders, setActiveReaders] = useState(1)
+    
+    // History State
+    const [readingHistory, setReadingHistory] = useState<{slug: string, title: string, date: number}[]>([])
 
     const containerRef = useRef<HTMLDivElement>(null)
 
@@ -101,26 +113,21 @@ export default function FieldNoteClientRenderer({ content }: { content: any }) {
             const paragraphs = containerRef.current.querySelectorAll('.tiptap-editor-readonly p, .tiptap-editor-readonly li')
             const definitions = new Map<string, string>()
 
-            // Pass 1: Extract definitions
             paragraphs.forEach(p => {
                 const text = p.textContent?.trim() || ''
                 const match = text.match(/^\[(\d+)\]\s+(.+)$/)
                 if (match) {
                     definitions.set(match[1], match[2])
-                    // Optionally fade out the definition paragraph since it's now a tooltip
                     ;(p as HTMLElement).style.opacity = '0.4'
                     ;(p as HTMLElement).style.fontSize = '0.8em'
                 }
             })
 
-            // Pass 2: Decorate references
             paragraphs.forEach(p => {
-                // Ignore if it already has footnote links to avoid infinite loop
                 if (p.querySelector('.footnote-ref')) return
                 
                 let html = p.innerHTML
                 if (html.match(/\[(\d+)\]/)) {
-                    // Only match if it's NOT at the very start of the innerHTML (to avoid overriding the definition itself)
                     html = html.replace(/(?<!^)\[(\d+)\]/g, (match, number) => {
                         const def = definitions.get(number) || `Classified Footnote Reference #${number}`
                         return `<span class="footnote-ref relative group inline-block text-red-500 font-bold px-0.5 cursor-pointer" tabindex="0">
@@ -140,63 +147,128 @@ export default function FieldNoteClientRenderer({ content }: { content: any }) {
         return () => clearTimeout(timer)
     }, [content, editor])
 
+    // Realtime Collaborative Presence Tracker
+    useEffect(() => {
+        if (!slug) return
+        const supabase = createClient()
+        const channel = supabase.channel(`online-users-${slug}`)
+        
+        channel
+            .on('presence', { event: 'sync' }, () => {
+                const state = channel.presenceState()
+                let count = 0
+                for (const key in state) count++
+                setActiveReaders(count > 0 ? count : 1)
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    const anonId = localStorage.getItem('case_404_anon_id') || ('anon-' + Math.random().toString(36).substring(2, 8))
+                    await channel.track({ user: anonId })
+                }
+            })
+            
+        return () => { channel.unsubscribe() }
+    }, [slug])
+
+    // Reading History
+    useEffect(() => {
+        if (!slug || !title) return
+        const key = 'case_404_reading_history'
+        try {
+            const raw = localStorage.getItem(key)
+            let history: any[] = raw ? JSON.parse(raw) : []
+            history = history.filter(h => h.slug !== slug)
+            history.unshift({ slug, title, date: Date.now() })
+            if (history.length > 5) history = history.slice(0, 5)
+            
+            localStorage.setItem(key, JSON.stringify(history))
+            setReadingHistory(history)
+        } catch (e) { console.error(e) }
+    }, [slug, title])
+
     // Progress Bar scroll listener
     useEffect(() => {
         const handleScroll = () => {
             if (!containerRef.current) return
             const rect = containerRef.current.getBoundingClientRect()
-            const totalHeight = rect.height
             const windowHeight = window.innerHeight
             
-            // Calculate progress simply
             let pct = 0
             if (rect.top <= windowHeight) {
                 const scrolled = Math.max(0, windowHeight - rect.top)
-                pct = (scrolled / (totalHeight + windowHeight)) * 100
+                pct = (scrolled / rect.height) * 100
             }
             if (pct < 0) pct = 0
             if (pct > 100) pct = 100
             setProgress(pct)
         }
         window.addEventListener('scroll', handleScroll)
-        handleScroll() // init
+        handleScroll()
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
 
-    // Highlight Tooltip
+    // Highlight capture
     useEffect(() => {
         const handleSelection = () => {
             const selection = window.getSelection()
             if (!selection || selection.isCollapsed || selection.toString().trim().length === 0) {
-                setShowShareMenu(false)
+                if (!isGeneratingQuote) setShowShareMenu(false)
                 return
             }
             
             const range = selection.getRangeAt(0)
             const rect = range.getBoundingClientRect()
             
-            // Check if selection is within our wrapper
             if (containerRef.current?.contains(range.commonAncestorContainer)) {
+                // Ensure tooltip follows horizontal layout precisely
                 setSharePosition({
-                    top: rect.top + window.scrollY - 50,
+                    top: rect.top + window.scrollY - 60,
                     left: rect.left + rect.width / 2
                 })
                 setSelectedText(selection.toString().trim())
                 setShowShareMenu(true)
             } else {
-                setShowShareMenu(false)
+                if (!isGeneratingQuote) setShowShareMenu(false)
             }
         }
         
         document.addEventListener('mouseup', handleSelection)
         return () => document.removeEventListener('mouseup', handleSelection)
-    }, [])
+    }, [isGeneratingQuote])
 
-    const handleShare = () => {
-        const url = window.location.href
-        const text = encodeURIComponent(`"${selectedText}" — Field Note Extract\n\n`)
-        window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(url)}`, '_blank')
-        setShowShareMenu(false)
+    // Quote Image Engine via html2canvas
+    const handleCopyImageContext = async () => {
+        if (!quoteNodeRef.current || !selectedText) return
+        try {
+            setIsGeneratingQuote(true)
+            
+            // Allow DOM repaints for the invisble frame
+            await new Promise(resolve => setTimeout(resolve, 50))
+            
+            const blob = await toBlob(quoteNodeRef.current, {
+                quality: 1,
+                pixelRatio: 2, // Retina resolution export
+                style: { backgroundColor: '#0e0e0e' }
+            })
+            
+            if (blob) {
+                const item = new ClipboardItem({ 'image/png': blob })
+                await navigator.clipboard.write([item])
+                setCopiedQuote(true)
+                setTimeout(() => {
+                    setCopiedQuote(false)
+                    setShowShareMenu(false)
+                }, 2000)
+            } else {
+               throw new Error("Blob failed to render.")
+            }
+        } catch (e) {
+            console.error("Clipboard write failed: ", e)
+            alert('Clipboard permissions or engine failed. Select copy again.')
+            setIsGeneratingQuote(false)
+        } finally {
+            setTimeout(() => setIsGeneratingQuote(false), 2000)
+        }
     }
 
     if (!content || Object.keys(content).length === 0) {
@@ -205,134 +277,184 @@ export default function FieldNoteClientRenderer({ content }: { content: any }) {
 
     const t = theme === 'dark'
     
-    // Cycle font size: 1 -> 1.1 -> 1.2 -> 1
+    // Cycle font size
     const toggleFontSize = () => {
         setFontSize(prev => prev >= 1.2 ? 1 : prev + 0.1)
     }
 
     return (
-        <div ref={containerRef} className={`mb-24 ${t ? 'bg-[#0a0a0a]/60 backdrop-blur-md border-white/5 shadow-2xl' : 'bg-[#fff5ee] border-gray-300 shadow-md'} rounded-3xl border relative group transition-all duration-700 font-sans theme-wrapper ${t ? 'theme-dark' : 'theme-light'}`}>
-            
-            {/* Reading Progress Indicator */}
-            <div className={`absolute top-0 left-0 h-1 bg-red-600 rounded-t-3xl transition-all duration-150 z-30`} style={{ width: `${progress}%` }} />
-            
-            {/* Dark Mode Specific Decorations */}
-            {t && (
-                <>
-                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-red-900/20 to-transparent group-hover:via-red-500/40 transition-all duration-1000" />
-                    <div className="absolute top-1/2 left-0 w-1 h-32 bg-gradient-to-b from-transparent via-red-900/40 to-transparent -translate-y-1/2 rounded-r-md group-hover:h-48 group-hover:via-red-500/60 transition-all duration-700 delay-100" />
-                </>
-            )}
+        <div className="relative">
 
-            {/* Share Tooltip */}
-            <AnimatePresence>
-                {showShareMenu && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute z-50 bg-[#111] border border-red-900/50 shadow-[0_0_20px_rgba(220,38,38,0.3)] rounded-xl p-1 flex items-center -translate-x-1/2"
-                        style={{ top: sharePosition.top, left: sharePosition.left }}
-                    >
-                        <button onClick={handleShare} className="text-white hover:bg-white/10 p-2 px-3 rounded-lg flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors">
-                            <Quote size={14} className="text-red-400" /> Share Intel
-                        </button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            <div className="flex flex-col lg:flex-row p-6 md:p-12 gap-12">
-                
-                {/* TOC Sidebar */}
-                {toc.length > 0 && (
-                    <div className="lg:w-48 xl:w-64 shrink-0 order-2 lg:order-1 border-t lg:border-t-0 lg:border-r pt-8 lg:pt-0 pr-0 lg:pr-8 border-gray-500/20 relative z-20">
-                        <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-hide">
-                            <h4 className={`text-[10px] font-mono uppercase tracking-[0.2em] mb-6 flex items-center gap-2 ${t ? 'text-gray-500' : 'text-gray-500'}`}>
-                                <BookOpen size={14} className={t ? 'text-red-500' : 'text-red-600'} /> Auto-TOC
-                            </h4>
-                            <ul className="space-y-3 font-mono text-xs tracking-wider">
-                                {toc.map((item) => (
-                                    <li key={item.id} style={{ paddingLeft: `${(item.level - 1) * 12}px` }}>
-                                        <a href={`#${item.id}`} className={`${t ? 'text-gray-400 hover:text-red-400' : 'text-gray-600 hover:text-red-700'} transition-colors inline-block line-clamp-2 leading-relaxed`}>
-                                            <span className="opacity-50 mr-2">/</span>{item.text}
-                                        </a>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
+            {/* Top Right Navbar Header Override via Fixed Placement */}
+            <div className="fixed top-4 right-4 md:right-8 z-[200] pointer-events-none drop-shadow-xl animate-fade-in flex items-center gap-3">
+                <div className="bg-[#1a1a1a]/80 backdrop-blur-md px-4 py-2 rounded-xl border border-red-900/40 shadow-[0_0_20px_rgba(220,38,38,0.15)] flex items-center gap-3">
+                    <div className="relative flex items-center justify-center">
+                        <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping absolute" />
+                        <div className="w-2.5 h-2.5 bg-red-500 rounded-full relative shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
                     </div>
-                )}
-
-                {/* Main Content Pane */}
-                <div className="flex-1 order-1 lg:order-2 min-w-0">
-                    
-                    {/* Reader Controls Toolbar */}
-                    <div className={`flex flex-wrap items-center justify-between pb-6 mb-8 border-b ${t ? 'border-white/10' : 'border-black/10'} transition-colors relative z-20`}>
-                        <div className="flex items-center gap-4 text-[10px] sm:text-xs font-mono uppercase tracking-widest w-full sm:w-auto mb-4 sm:mb-0">
-                            <span className={`flex items-center gap-2 ${t ? 'text-gray-400' : 'text-gray-500'}`}>
-                                <Clock size={14} className={t ? 'text-red-500' : 'text-red-600'} /> {readingTime} MIN READ
-                            </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-1 sm:gap-2 bg-black/5 rounded-full p-1 border border-black/5 dark:bg-white/5 dark:border-white/5 mx-auto sm:mx-0">
-                            <button onClick={toggleFontSize} className={`p-2 rounded-full ${t ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/10 text-gray-600'} transition-colors flex items-center gap-1.5 px-3`} title="Adjust Font Size">
-                                <Type size={14} /> <span className="text-[10px] font-mono leading-none">{fontSize.toFixed(1)}x</span>
-                            </button>
-                            <div className="w-[1px] h-4 bg-gray-500/20" />
-                            <button onClick={() => setTheme(t ? 'light' : 'dark')} className={`p-2 rounded-full ${t ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/10 text-gray-600'} transition-colors px-3`} title={t ? "Switch to Paper View" : "Switch to Dark View"}>
-                                {t ? <Sun size={14} /> : <Moon size={14} />}
-                            </button>
-                        </div>
+                    <div className="font-mono text-[9px] md:text-xs font-bold text-gray-300 uppercase tracking-widest">
+                        {activeReaders} {activeReaders === 1 ? 'AGENT' : 'AGENTS'} READING
                     </div>
-
-                    {/* Editor Content Area */}
-                    <div className="relative text-base md:text-lg lg:text-xl transition-all duration-300" style={{ fontSize: `${fontSize}rem` }}>
-                        <EditorContent editor={editor} />
-                    </div>
-
                 </div>
             </div>
 
-            {/* Global Styles injected for scoped viewing */}
-            <style dangerouslySetInnerHTML={{
-                __html: `
-        html { scroll-behavior: smooth; }
-        
-        .theme-dark .tiptap-editor-readonly { color: #d1d5db; }
-        .theme-dark .tiptap-editor-readonly p { margin-bottom: 1.5em; line-height: 1.8; }
-        .theme-dark .tiptap-editor-readonly h1 { font-size: 2.2em; font-weight: 900; margin-top: 1.5em; margin-bottom: 0.8em; color: #fff; letter-spacing: -0.02em; }
-        .theme-dark .tiptap-editor-readonly h2 { font-size: 1.6em; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.8em; color: #f3f4f6; letter-spacing: -0.01em; }
-        .theme-dark .tiptap-editor-readonly h3 { font-size: 1.25em; font-weight: 700; margin-top: 1.2em; margin-bottom: 0.8em; color: #e5e7eb; }
-        .theme-dark .tiptap-editor-readonly ul, .theme-dark .tiptap-editor-readonly ol { padding-left: 1.5em; margin-bottom: 1.5em; color: #9ca3af; }
-        .theme-dark .tiptap-editor-readonly blockquote { border-left: 4px solid #991b1b; background: rgba(153, 27, 27, 0.05); padding: 1em 1.5em; margin-left: 0; margin-bottom: 1.5em; font-style: italic; color: #9ca3af; border-radius: 0 0.5em 0.5em 0; }
-        .theme-dark .tiptap-editor-readonly code { background-color: #1f2937; padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.9em; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
-        .theme-dark .tiptap-editor-readonly pre { background-color: #111827; padding: 1.5em; border-radius: 8px; overflow-x: auto; font-family: monospace; margin-bottom: 1.5em; border: 1px solid rgba(255,255,255,0.05); color: #e5e7eb; }
-        .theme-dark .tiptap-editor-readonly a { color: #f87171; text-decoration: underline; text-underline-offset: 4px; transition: color 0.2s; }
-        .theme-dark .tiptap-editor-readonly a:hover { color: #ef4444; }
-        .theme-dark .tiptap-image { border-color: rgba(255,255,255,0.1); }
-        .theme-dark .tiptap-youtube { border-color: rgba(255,255,255,0.1); }
+            {/* Reading Progress HUD (Visible on Desktop Left Edge) */}
+            <div className="fixed top-1/2 left-2 md:left-6 -translate-y-1/2 z-50 flex-col items-center gap-4 pointer-events-none hidden xl:flex">
+                <div className="w-1 h-48 bg-black/20 dark:bg-white/5 rounded-full relative overflow-hidden backdrop-blur-sm border border-red-900/20 shadow-inner">
+                    <div className="absolute top-0 left-0 w-full bg-gradient-to-b from-red-500 to-red-800 transition-all duration-150" style={{ height: `${progress}%` }} />
+                </div>
+                <div className="font-mono text-[9px] text-red-500 uppercase tracking-widest font-bold bg-black/50 px-2 py-1 rounded-md border border-red-900/40">
+                    {Math.round(progress)}%
+                </div>
+                <div className="font-mono text-[9px] text-red-500/60 uppercase tracking-[0.3em] transition-all rotate-180 mix-blend-screen" style={{ writingMode: 'vertical-rl' }}>
+                    Data Extraction
+                </div>
+            </div>
 
-        .theme-light .tiptap-editor-readonly { color: #374151; }
-        .theme-light .tiptap-editor-readonly p { margin-bottom: 1.5em; line-height: 1.8; color: #374151; }
-        .theme-light .tiptap-editor-readonly h1 { font-size: 2.2em; font-weight: 900; margin-top: 1.5em; margin-bottom: 0.8em; color: #111827; letter-spacing: -0.02em; }
-        .theme-light .tiptap-editor-readonly h2 { font-size: 1.6em; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.8em; color: #1f2937; letter-spacing: -0.01em; }
-        .theme-light .tiptap-editor-readonly h3 { font-size: 1.25em; font-weight: 700; margin-top: 1.2em; margin-bottom: 0.8em; color: #374151; }
-        .theme-light .tiptap-editor-readonly ul, .theme-light .tiptap-editor-readonly ol { padding-left: 1.5em; margin-bottom: 1.5em; color: #4b5563; }
-        .theme-light .tiptap-editor-readonly blockquote { border-left: 4px solid #dc2626; background: rgba(220, 38, 38, 0.05); padding: 1em 1.5em; margin-left: 0; margin-bottom: 1.5em; font-style: italic; color: #4b5563; border-radius: 0 0.5em 0.5em 0; }
-        .theme-light .tiptap-editor-readonly code { background-color: #f3f4f6; padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.9em; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); color: #1f2937; }
-        .theme-light .tiptap-editor-readonly pre { background-color: #f8fafc; padding: 1.5em; border-radius: 8px; overflow-x: auto; font-family: monospace; margin-bottom: 1.5em; border: 1px solid rgba(0,0,0,0.1); color: #1e293b; }
-        .theme-light .tiptap-editor-readonly a { color: #dc2626; text-decoration: underline; text-underline-offset: 4px; transition: color 0.2s; }
-        .theme-light .tiptap-editor-readonly a:hover { color: #991b1b; }
-        .theme-light .tiptap-image { border-color: rgba(0,0,0,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-        .theme-light .tiptap-youtube { border-color: rgba(0,0,0,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-        
-        .tiptap-editor-readonly ul { list-style-type: disc; }
-        .tiptap-editor-readonly ol { list-style-type: decimal; }
-        .tiptap-editor-readonly pre code { background-color: transparent; padding: 0; box-shadow: none; border: none; color: inherit; }
-        
-        /* Heading Anchors */
-        .heading-with-anchor { position: relative; scroll-margin-top: 100px; }
-      `}} />
+            <div ref={containerRef} className={`mb-24 ${t ? 'bg-[#0a0a0a]/60 backdrop-blur-md border-white/5 shadow-2xl' : 'bg-[#fff5ee] border-gray-300 shadow-md'} rounded-3xl border relative group transition-all duration-700 font-sans theme-wrapper ${t ? 'theme-dark' : 'theme-light'}`}>
+                
+                {/* Dark Mode Specific Decorations */}
+                {t && (
+                    <>
+                        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-red-900/20 to-transparent group-hover:via-red-500/40 transition-all duration-1000" />
+                        <div className="absolute top-1/2 left-0 w-1 h-32 bg-gradient-to-b from-transparent via-red-900/40 to-transparent -translate-y-1/2 rounded-r-md group-hover:h-48 group-hover:via-red-500/60 transition-all duration-700 delay-100" />
+                    </>
+                )}
+
+                {/* Hidden Quote Rendering Context for HTML2Image */}
+                {selectedText && (
+                    <div 
+                        ref={quoteNodeRef} 
+                        className="fixed left-[-9999px] top-0 w-[800px] h-auto p-16 bg-[#0e0e0e] border-[4px] border-black text-[#EDEDED] font-sans flex flex-col items-center justify-center -z-50 overflow-hidden"
+                    >
+                        <div className="absolute inset-0 bg-[#0e0e0e] bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] mix-blend-overlay" />
+                        <div className="absolute top-0 left-0 w-full h-2 bg-red-800" />
+                        
+                        <div className="absolute top-8 right-8 font-mono text-xs uppercase tracking-[0.3em] text-red-500/80 font-bold border border-red-900/40 px-4 py-2 bg-red-900/10">
+                            CASE #404: INTEL
+                        </div>
+
+                        <div className="w-full relative z-10 bg-[#141414] shadow-2xl border border-white/10 rounded-3xl p-12 mt-12 bg-[linear-gradient(180deg,transparent_50%,rgba(0,0,0,0.2)_50%)] bg-[size:100%_4px]">
+                            <Quote size={48} className="text-red-900/60 absolute -top-5 -left-5 rotate-180" />
+                            
+                            <p className="font-serif text-3xl leading-relaxed text-gray-100 mt-4 relative z-10 break-words whitespace-pre-wrap">
+                                "{selectedText}"
+                            </p>
+                            
+                            <div className="mt-16 flex items-center justify-between border-t border-white/10 pt-8">
+                               <div>
+                                   <div className="font-mono text-base tracking-widest text-red-400 font-bold flex items-center gap-3">
+                                       <span className="w-2 h-2 rounded-full bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
+                                       {title.length > 55 ? title.substring(0, 55) + '...' : title}
+                                   </div>
+                                   <div className="font-mono text-xs uppercase tracking-widest text-gray-500 mt-3 pt-1">
+                                       brooksolomon.com/field-notes
+                                   </div>
+                               </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Share Tooltip Over Cursor Base */}
+                <AnimatePresence>
+                    {showShareMenu && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute z-[1000] bg-[#111] border border-red-900/50 shadow-[0_0_20px_rgba(220,38,38,0.5)] rounded-xl p-1.5 flex items-center -translate-x-1/2 pointer-events-auto"
+                            style={{ top: sharePosition.top, left: sharePosition.left }}
+                        >
+                            <button 
+                                onClick={handleCopyImageContext} 
+                                disabled={isGeneratingQuote || copiedQuote}
+                                className="text-white hover:bg-white/10 p-2.5 px-4 rounded-lg flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors disabled:opacity-80"
+                            >
+                                {copiedQuote ? (
+                                    <><CheckCircle size={15} className="text-green-400" /> Copied Image</>
+                                ) : isGeneratingQuote ? (
+                                    <><div className="w-3 h-3 border-2 border-red-500 border-t-transparent rounded-full animate-spin" /> Rendering...</>
+                                ) : (
+                                    <><Copy size={14} className="text-red-400" /> Quote Image</>
+                                )}
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <div className="p-6 md:p-12">
+                    {/* Main Content Pane */}
+                    <div className="w-full min-w-0">
+                        
+                        {/* Reader Controls Toolbar */}
+                        <div className={`flex flex-wrap items-center justify-between pb-6 mb-8 border-b ${t ? 'border-white/10' : 'border-black/10'} transition-colors relative z-20`}>
+                            <div className="flex items-center gap-4 text-[10px] sm:text-xs font-mono uppercase tracking-widest w-full sm:w-auto mb-4 sm:mb-0">
+                                <span className={`flex items-center gap-2 ${t ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    <Clock size={14} className={t ? 'text-red-500' : 'text-red-600'} /> {readingTime} MIN READ
+                                </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-1 sm:gap-2 bg-black/5 rounded-full p-1 border border-black/5 dark:bg-white/5 dark:border-white/5 mx-auto sm:mx-0">
+                                <button onClick={toggleFontSize} className={`p-2 rounded-full ${t ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/10 text-gray-600'} transition-colors flex items-center gap-1.5 px-3`} title="Adjust Font Size">
+                                    <Type size={14} /> <span className="text-[10px] font-mono leading-none">{fontSize.toFixed(1)}x</span>
+                                </button>
+                                <div className="w-[1px] h-4 bg-gray-500/20" />
+                                <button onClick={() => setTheme(t ? 'light' : 'dark')} className={`p-2 rounded-full ${t ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/10 text-gray-600'} transition-colors px-3`} title={t ? "Switch to Paper View" : "Switch to Dark View"}>
+                                    {t ? <Sun size={14} /> : <Moon size={14} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Editor Content Area */}
+                        <div className="relative text-base md:text-lg lg:text-xl transition-all duration-300" style={{ fontSize: `${fontSize}rem` }}>
+                            <EditorContent editor={editor} />
+                        </div>
+
+                    </div>
+                </div>
+
+                {/* Global Styles injected for scoped viewing */}
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+            html { scroll-behavior: smooth; }
+            
+            .theme-dark .tiptap-editor-readonly { color: #d1d5db; }
+            .theme-dark .tiptap-editor-readonly p { margin-bottom: 1.5em; line-height: 1.8; }
+            .theme-dark .tiptap-editor-readonly h1 { font-size: 2.2em; font-weight: 900; margin-top: 1.5em; margin-bottom: 0.8em; color: #fff; letter-spacing: -0.02em; }
+            .theme-dark .tiptap-editor-readonly h2 { font-size: 1.6em; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.8em; color: #f3f4f6; letter-spacing: -0.01em; }
+            .theme-dark .tiptap-editor-readonly h3 { font-size: 1.25em; font-weight: 700; margin-top: 1.2em; margin-bottom: 0.8em; color: #e5e7eb; }
+            .theme-dark .tiptap-editor-readonly ul, .theme-dark .tiptap-editor-readonly ol { padding-left: 1.5em; margin-bottom: 1.5em; color: #9ca3af; }
+            .theme-dark .tiptap-editor-readonly blockquote { border-left: 4px solid #991b1b; background: rgba(153, 27, 27, 0.05); padding: 1em 1.5em; margin-left: 0; margin-bottom: 1.5em; font-style: italic; color: #9ca3af; border-radius: 0 0.5em 0.5em 0; }
+            .theme-dark .tiptap-editor-readonly code { background-color: #1f2937; padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.9em; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
+            .theme-dark .tiptap-editor-readonly pre { background-color: #111827; padding: 1.5em; border-radius: 8px; overflow-x: auto; font-family: monospace; margin-bottom: 1.5em; border: 1px solid rgba(255,255,255,0.05); color: #e5e7eb; }
+            .theme-dark .tiptap-editor-readonly a { color: #f87171; text-decoration: underline; text-underline-offset: 4px; transition: color 0.2s; }
+            .theme-dark .tiptap-editor-readonly a:hover { color: #ef4444; }
+            .theme-dark .tiptap-image { border-color: rgba(255,255,255,0.1); }
+            .theme-dark .tiptap-youtube { border-color: rgba(255,255,255,0.1); }
+
+            .theme-light .tiptap-editor-readonly { color: #374151; }
+            .theme-light .tiptap-editor-readonly p { margin-bottom: 1.5em; line-height: 1.8; color: #374151; }
+            .theme-light .tiptap-editor-readonly h1 { font-size: 2.2em; font-weight: 900; margin-top: 1.5em; margin-bottom: 0.8em; color: #111827; letter-spacing: -0.02em; }
+            .theme-light .tiptap-editor-readonly h2 { font-size: 1.6em; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.8em; color: #1f2937; letter-spacing: -0.01em; }
+            .theme-light .tiptap-editor-readonly h3 { font-size: 1.25em; font-weight: 700; margin-top: 1.2em; margin-bottom: 0.8em; color: #374151; }
+            .theme-light .tiptap-editor-readonly ul, .theme-light .tiptap-editor-readonly ol { padding-left: 1.5em; margin-bottom: 1.5em; color: #4b5563; }
+            .theme-light .tiptap-editor-readonly blockquote { border-left: 4px solid #dc2626; background: rgba(220, 38, 38, 0.05); padding: 1em 1.5em; margin-left: 0; margin-bottom: 1.5em; font-style: italic; color: #4b5563; border-radius: 0 0.5em 0.5em 0; }
+            .theme-light .tiptap-editor-readonly code { background-color: #f3f4f6; padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.9em; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); color: #1f2937; }
+            .theme-light .tiptap-editor-readonly pre { background-color: #f8fafc; padding: 1.5em; border-radius: 8px; overflow-x: auto; font-family: monospace; margin-bottom: 1.5em; border: 1px solid rgba(0,0,0,0.1); color: #1e293b; }
+            .theme-light .tiptap-editor-readonly a { color: #dc2626; text-decoration: underline; text-underline-offset: 4px; transition: color 0.2s; }
+            .theme-light .tiptap-editor-readonly a:hover { color: #991b1b; }
+            .theme-light .tiptap-image { border-color: rgba(0,0,0,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+            .theme-light .tiptap-youtube { border-color: rgba(0,0,0,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+            
+            .tiptap-editor-readonly ul { list-style-type: disc; }
+            .tiptap-editor-readonly ol { list-style-type: decimal; }
+            .tiptap-editor-readonly pre code { background-color: transparent; padding: 0; box-shadow: none; border: none; color: inherit; }
+            
+            /* Heading Anchors */
+            .heading-with-anchor { position: relative; scroll-margin-top: 100px; }
+          `}} />
+            </div>
         </div>
     )
 }

@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { History } from 'lucide-react'
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -22,6 +24,15 @@ const cardVariants = {
 }
 
 export default function FieldNotesList({ blogs }: { blogs: any[] }) {
+    const [readingHistory, setReadingHistory] = useState<{slug: string, title: string, date: number}[]>([])
+
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('case_404_reading_history')
+            if (raw) setReadingHistory(JSON.parse(raw))
+        } catch(e) {}
+    }, [])
+
     if (!blogs || blogs.length === 0) {
         return (
             <motion.div
@@ -34,54 +45,91 @@ export default function FieldNotesList({ blogs }: { blogs: any[] }) {
     }
 
     return (
-        <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="flex flex-col gap-8 relative z-10 max-w-4xl mx-auto"
-        >
-            {blogs.map((blog) => (
-                <Link href={`/field-notes/${blog.slug}`} key={blog.id} className="block group" style={{ perspective: '1200px' }}>
-                    <motion.div
-                        variants={cardVariants}
-                        whileHover={{ scale: 1.02, rotateY: 2, rotateX: 2 }}
-                        className="h-full relative overflow-hidden bg-gradient-to-br from-[#111111]/90 to-[#0a0a0a]/90 backdrop-blur-xl border border-white/5 p-8 rounded-3xl transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_40px_rgba(220,38,38,0.15)] group-hover:border-red-500/30"
-                        style={{ transformStyle: 'preserve-3d' }}
-                    >
-                        {/* Animated Laser Border Line */}
-                        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-pulse transition-opacity duration-500" />
+        <div className="flex flex-col lg:flex-row gap-12 max-w-6xl mx-auto relative z-10 items-start">
+            
+            {/* Main Archives Column */}
+            <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
+                className="flex-1 w-full flex flex-col gap-8"
+            >
+                {blogs.map((blog) => (
+                    <Link href={`/field-notes/${blog.slug}`} key={blog.id} className="block group" style={{ perspective: '1200px' }}>
+                        <motion.div
+                            variants={cardVariants}
+                            whileHover={{ scale: 1.02, rotateY: 2, rotateX: 2 }}
+                            className="h-full relative overflow-hidden bg-gradient-to-br from-[#111111]/90 to-[#0a0a0a]/90 backdrop-blur-xl border border-white/5 p-8 rounded-3xl transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_40px_rgba(220,38,38,0.15)] group-hover:border-red-500/30"
+                            style={{ transformStyle: 'preserve-3d' }}
+                        >
+                            {/* Animated Laser Border Line */}
+                            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-pulse transition-opacity duration-500" />
 
-                        {/* Glow orb */}
-                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-600/20 rounded-full blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                            {/* Glow orb */}
+                            <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-600/20 rounded-full blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
 
-                        <div className="flex items-center gap-4 mb-8 relative z-10">
-                            <span className="text-[10px] font-mono text-red-300 bg-red-900/30 uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border border-red-500/30 backdrop-blur-sm shadow-[0_0_15px_rgba(220,38,38,0.2)]">
-                                Classified
-                            </span>
-                            <span className="text-[10px] font-mono text-gray-400 tracking-widest bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                                {new Date(blog.created_at).toLocaleDateString()}
-                            </span>
-                        </div>
-
-                        <h2 className="text-2xl font-black text-gray-200 group-hover:text-white transition-colors mb-4 line-clamp-3 leading-tight drop-shadow-md relative z-10" style={{ transform: 'translateZ(20px)' }}>
-                            {blog.title}
-                        </h2>
-
-                        <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between z-10 relative group-hover:border-red-900/30 transition-colors">
-                            <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/80 group-hover:bg-yellow-400 group-hover:shadow-[0_0_10px_rgba(250,204,21,0.5)] transition-all" />
-                                <span className="text-[10px] font-mono text-gray-400 group-hover:text-gray-300 uppercase tracking-[0.1em] font-bold transition-colors">
-                                    {blog.view_count || 0} Views
+                            <div className="flex items-center gap-4 mb-8 relative z-10">
+                                <span className="text-[10px] font-mono text-red-300 bg-red-900/30 uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border border-red-500/30 backdrop-blur-sm shadow-[0_0_15px_rgba(220,38,38,0.2)]">
+                                    Classified
+                                </span>
+                                <span className="text-[10px] font-mono text-gray-400 tracking-widest bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                                    {new Date(blog.created_at).toLocaleDateString()}
                                 </span>
                             </div>
-                            <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest group-hover:text-red-400 transition-colors flex items-center gap-2 font-bold bg-white/5 group-hover:bg-red-500/10 px-3 py-1.5 rounded-full">
-                                Extract Intel
-                                <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
-                            </span>
-                        </div>
-                    </motion.div>
-                </Link>
-            ))}
-        </motion.div>
+
+                            <h2 className="text-2xl font-black text-gray-200 group-hover:text-white transition-colors mb-4 line-clamp-3 leading-tight drop-shadow-md relative z-10" style={{ transform: 'translateZ(20px)' }}>
+                                {blog.title}
+                            </h2>
+
+                            <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between z-10 relative group-hover:border-red-900/30 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/80 group-hover:bg-yellow-400 group-hover:shadow-[0_0_10px_rgba(250,204,21,0.5)] transition-all" />
+                                    <span className="text-[10px] font-mono text-gray-400 group-hover:text-gray-300 uppercase tracking-[0.1em] font-bold transition-colors">
+                                        {blog.view_count || 0} Views
+                                    </span>
+                                </div>
+                                <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest group-hover:text-red-400 transition-colors flex items-center gap-2 font-bold bg-white/5 group-hover:bg-red-500/10 px-3 py-1.5 rounded-full">
+                                    Extract Intel
+                                    <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
+                                </span>
+                            </div>
+                        </motion.div>
+                    </Link>
+                ))}
+            </motion.div>
+
+            {/* Reading History Sidebar */}
+            {readingHistory.length > 0 && (
+                <motion.div 
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="w-full lg:w-72 shrink-0 bg-[#0a0a0a]/80 backdrop-blur-md rounded-3xl p-8 border border-white/5 shadow-2xl relative lg:sticky lg:top-24"
+                >
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[1px] bg-gradient-to-r from-transparent via-red-900/50 to-transparent" />
+
+                    <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] mb-6 flex items-center gap-3 text-red-500 font-bold border-b border-red-900/30 pb-4">
+                        <History size={16} className="text-red-600 animate-pulse" /> 
+                        Memory Buffer
+                    </h4>
+                    
+                    <ul className="space-y-5 font-mono text-xs tracking-wider text-gray-500">
+                        {readingHistory.map((h) => (
+                            <li key={h.slug} className="group relative">
+                                <Link href={`/field-notes/${h.slug}`} className="block hover:text-red-400 transition-colors line-clamp-2 leading-relaxed flex items-start gap-2">
+                                    <span className="text-red-900/50 group-hover:text-red-500 transition-colors mt-0.5">&gt;</span> 
+                                    <span>{h.title}</span>
+                                </Link>
+                                <div className="text-[9px] text-gray-600 mt-2 ml-4 py-1 flex items-center gap-2">
+                                    <span className="w-1 h-1 bg-gray-700 group-hover:bg-red-900 rounded-full transition-colors" />
+                                    Accessed: {new Date(h.date).toLocaleDateString()}
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </motion.div>
+            )}
+
+        </div>
     )
 }
