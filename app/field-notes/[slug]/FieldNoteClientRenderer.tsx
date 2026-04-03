@@ -6,7 +6,7 @@ import Image from '@tiptap/extension-image'
 import Youtube from '@tiptap/extension-youtube'
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Type, Moon, Sun, Clock, BookOpen, Quote, History, Copy, CheckCircle } from 'lucide-react'
+import { Type, Moon, Sun, Clock, BookOpen, Quote, History, Copy, CheckCircle, Eye, EyeOff, Bookmark, BookmarkCheck, HelpCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { toBlob } from 'html-to-image'
 
@@ -21,7 +21,12 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
     const [readingTime, setReadingTime] = useState(0)
     const [toc, setToc] = useState<{ id: string; text: string; level: number }[]>([])
     const [theme, setTheme] = useState<'dark' | 'light'>('dark')
-    const [fontSize, setFontSize] = useState<number>(1)
+    const [fontSize, setFontSize] = useState<number>(1.1)
+    const [isDistractedFree, setIsDistractedFree] = useState(false)
+    const [enableDropCaps, setEnableDropCaps] = useState(true)
+    const [savedPosition, setSavedPosition] = useState(0)
+    const [showPositionSaved, setShowPositionSaved] = useState(false)
+    const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
     
     // Share Quote State
     const [showShareMenu, setShowShareMenu] = useState(false)
@@ -201,11 +206,82 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
             if (pct < 0) pct = 0
             if (pct > 100) pct = 100
             setProgress(pct)
+            
+            // Auto-save reading position
+            if (slug && pct > 5) { // Only save if user has scrolled past 5%
+                const currentSaved = localStorage.getItem(`reading_position_${slug}`)
+                const newPosition = pct.toString()
+                
+                if (!currentSaved || Math.abs(parseFloat(currentSaved) - pct) > 5) {
+                    localStorage.setItem(`reading_position_${slug}`, newPosition)
+                    
+                    // Show brief notification
+                    if (currentSaved && Math.abs(parseFloat(currentSaved) - pct) > 10) {
+                        setShowPositionSaved(true)
+                        setTimeout(() => setShowPositionSaved(false), 2000)
+                    }
+                }
+            }
         }
         window.addEventListener('scroll', handleScroll)
         handleScroll()
         return () => window.removeEventListener('scroll', handleScroll)
-    }, [])
+    }, [slug])
+
+    // Load saved reading position
+    useEffect(() => {
+        if (!slug) return
+        const saved = localStorage.getItem(`reading_position_${slug}`)
+        if (saved) {
+            setSavedPosition(parseFloat(saved))
+        }
+    }, [slug])
+
+    // Keyboard shortcuts for reading features
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Only handle shortcuts when not typing in an input
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+            
+            switch (e.key) {
+                case 'Escape':
+                    if (isDistractedFree) {
+                        setIsDistractedFree(false)
+                        e.preventDefault()
+                    }
+                    break
+                case 'f':
+                case 'F':
+                    if (e.ctrlKey || e.metaKey) return // Don't interfere with browser find
+                    setIsDistractedFree(!isDistractedFree)
+                    e.preventDefault()
+                    break
+                case 'd':
+                case 'D':
+                    setEnableDropCaps(!enableDropCaps)
+                    e.preventDefault()
+                    break
+                case 'r':
+                case 'R':
+                    if (savedPosition > 5) {
+                        restorePosition()
+                        e.preventDefault()
+                    }
+                    break
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [isDistractedFree, enableDropCaps, savedPosition])
+
+    // Function to restore reading position
+    const restorePosition = () => {
+        if (!containerRef.current || savedPosition <= 0) return
+        const rect = containerRef.current.getBoundingClientRect()
+        const targetScroll = (savedPosition / 100) * rect.height - window.innerHeight + rect.top + window.scrollY
+        window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' })
+    }
 
     // Highlight capture
     useEffect(() => {
@@ -279,14 +355,85 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
     
     // Cycle font size
     const toggleFontSize = () => {
-        setFontSize(prev => prev >= 1.2 ? 1 : prev + 0.1)
+        setFontSize(prev => prev >= 1.3 ? 1.1 : prev + 0.1)
     }
 
     return (
         <div className="relative">
 
+            {/* Distraction-Free Mode Overlay */}
+            {isDistractedFree && (
+                <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[100] pointer-events-none" />
+            )}
+
+            {/* Position Saved Notification */}
+            <AnimatePresence>
+                {showPositionSaved && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                        className="fixed bottom-8 right-8 z-[300] bg-[#111] border border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.3)] rounded-xl p-4 flex items-center gap-3 pointer-events-none"
+                    >
+                        <BookmarkCheck size={16} className="text-green-400" />
+                        <span className="font-mono text-xs text-green-400 uppercase tracking-widest">Position Saved</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Keyboard Shortcuts Help */}
+            <AnimatePresence>
+                {showKeyboardHelp && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                        onClick={() => setShowKeyboardHelp(false)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-[#111] border border-red-900/50 shadow-[0_0_40px_rgba(220,38,38,0.3)] rounded-xl p-8 max-w-md w-full"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                                <HelpCircle size={20} className="text-red-400" />
+                                Reading Controls
+                            </h3>
+                            
+                            <div className="space-y-4 text-sm">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-300">Focus Mode</span>
+                                    <kbd className="bg-black/50 px-2 py-1 rounded text-xs font-mono text-red-400 border border-red-900/30">F</kbd>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-300">Toggle Drop Caps</span>
+                                    <kbd className="bg-black/50 px-2 py-1 rounded text-xs font-mono text-red-400 border border-red-900/30">D</kbd>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-300">Restore Position</span>
+                                    <kbd className="bg-black/50 px-2 py-1 rounded text-xs font-mono text-red-400 border border-red-900/30">R</kbd>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-300">Exit Focus Mode</span>
+                                    <kbd className="bg-black/50 px-2 py-1 rounded text-xs font-mono text-red-400 border border-red-900/30">ESC</kbd>
+                                </div>
+                            </div>
+                            
+                            <div className="mt-6 pt-4 border-t border-white/10">
+                                <p className="text-xs text-gray-400 font-mono uppercase tracking-widest text-center">
+                                    Reading position auto-saves as you scroll
+                                </p>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Top Right Navbar Header Override via Fixed Placement */}
-            <div className="fixed top-4 right-4 md:right-8 z-[200] pointer-events-none drop-shadow-xl animate-fade-in flex items-center gap-3">
+            <div className={`fixed top-4 right-4 md:right-8 z-[200] pointer-events-none drop-shadow-xl animate-fade-in flex items-center gap-3 transition-opacity duration-500 ${isDistractedFree ? 'opacity-20 hover:opacity-100' : 'opacity-100'}`}>
                 <div className="bg-[#1a1a1a]/80 backdrop-blur-md px-4 py-2 rounded-xl border border-red-900/40 shadow-[0_0_20px_rgba(220,38,38,0.15)] flex items-center gap-3">
                     <div className="relative flex items-center justify-center">
                         <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping absolute" />
@@ -299,7 +446,7 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
             </div>
 
             {/* Reading Progress HUD (Visible on Desktop Left Edge) */}
-            <div className="fixed top-1/2 left-2 md:left-6 -translate-y-1/2 z-50 flex-col items-center gap-4 pointer-events-none hidden xl:flex">
+            <div className={`fixed top-1/2 left-2 md:left-6 -translate-y-1/2 z-50 flex-col items-center gap-4 pointer-events-none hidden xl:flex transition-opacity duration-500 ${isDistractedFree ? 'opacity-20 hover:opacity-100' : 'opacity-100'}`}>
                 <div className="w-1 h-48 bg-black/20 dark:bg-white/5 rounded-full relative overflow-hidden backdrop-blur-sm border border-red-900/20 shadow-inner">
                     <div className="absolute top-0 left-0 w-full bg-gradient-to-b from-red-500 to-red-800 transition-all duration-150" style={{ height: `${progress}%` }} />
                 </div>
@@ -311,7 +458,7 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
                 </div>
             </div>
 
-            <div ref={containerRef} className={`mb-24 ${t ? 'bg-[#0a0a0a]/60 backdrop-blur-md border-white/5 shadow-2xl' : 'bg-[#fff5ee] border-gray-300 shadow-md'} rounded-3xl border relative group transition-all duration-700 font-sans theme-wrapper ${t ? 'theme-dark' : 'theme-light'}`}>
+            <div ref={containerRef} className={`mb-24 ${t ? 'bg-[#0a0a0a]/60 backdrop-blur-md border-white/5 shadow-2xl' : 'bg-[#fff5ee] border-gray-300 shadow-md'} rounded-3xl border relative group transition-all duration-700 font-sans theme-wrapper ${t ? 'theme-dark' : 'theme-light'} ${isDistractedFree ? 'z-[150] relative' : ''} ${enableDropCaps ? 'drop-caps-enabled' : ''}`}>
                 
                 {/* Dark Mode Specific Decorations */}
                 {t && (
@@ -400,8 +547,28 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
                                     <Type size={14} /> <span className="text-[10px] font-mono leading-none">{fontSize.toFixed(1)}x</span>
                                 </button>
                                 <div className="w-[1px] h-4 bg-gray-500/20" />
+                                <button onClick={() => setEnableDropCaps(!enableDropCaps)} className={`p-2 rounded-full ${enableDropCaps ? (t ? 'bg-red-900/20 text-red-400' : 'bg-red-100 text-red-600') : (t ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/10 text-gray-600')} transition-colors px-3`} title="Toggle Drop Caps">
+                                    <span className="text-sm font-serif font-bold">A</span>
+                                </button>
+                                <div className="w-[1px] h-4 bg-gray-500/20" />
+                                <button onClick={() => setIsDistractedFree(!isDistractedFree)} className={`p-2 rounded-full ${isDistractedFree ? (t ? 'bg-red-900/20 text-red-400' : 'bg-red-100 text-red-600') : (t ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/10 text-gray-600')} transition-colors px-3`} title={isDistractedFree ? "Exit Focus Mode" : "Enter Focus Mode"}>
+                                    {isDistractedFree ? <EyeOff size={14} /> : <Eye size={14} />}
+                                </button>
+                                <div className="w-[1px] h-4 bg-gray-500/20" />
                                 <button onClick={() => setTheme(t ? 'light' : 'dark')} className={`p-2 rounded-full ${t ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/10 text-gray-600'} transition-colors px-3`} title={t ? "Switch to Paper View" : "Switch to Dark View"}>
                                     {t ? <Sun size={14} /> : <Moon size={14} />}
+                                </button>
+                                {savedPosition > 5 && (
+                                    <>
+                                        <div className="w-[1px] h-4 bg-gray-500/20" />
+                                        <button onClick={restorePosition} className={`p-2 rounded-full ${t ? 'hover:bg-white/10 text-yellow-400' : 'hover:bg-black/10 text-yellow-600'} transition-colors px-3`} title={`Resume reading at ${Math.round(savedPosition)}% - This bookmark appears when you return to an article you've read before`}>
+                                            <BookmarkCheck size={14} />
+                                        </button>
+                                    </>
+                                )}
+                                <div className="w-[1px] h-4 bg-gray-500/20" />
+                                <button onClick={() => setShowKeyboardHelp(!showKeyboardHelp)} className={`p-2 rounded-full ${t ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/10 text-gray-600'} transition-colors px-3`} title="Keyboard Shortcuts">
+                                    <HelpCircle size={14} />
                                 </button>
                             </div>
                         </div>
@@ -418,6 +585,44 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
                 <style dangerouslySetInnerHTML={{
                     __html: `
             html { scroll-behavior: smooth; }
+            
+            /* Force custom cursor everywhere and prevent default cursor */
+            * {
+                cursor: none !important;
+            }
+            
+            /* Override for specific interactive elements that need pointer behavior */
+            button, a, input, textarea, select, [role="button"], [tabindex]:not([tabindex="-1"]) {
+                cursor: none !important;
+            }
+            
+            /* Ensure text selection still works */
+            .tiptap-editor-readonly p, .tiptap-editor-readonly h1, .tiptap-editor-readonly h2, .tiptap-editor-readonly h3, .tiptap-editor-readonly li, .tiptap-editor-readonly blockquote {
+                cursor: none !important;
+            }
+            
+            /* Drop Caps Styling */
+            .drop-caps-enabled .tiptap-editor-readonly p:first-of-type:first-letter {
+                float: left;
+                font-size: 4em;
+                line-height: 0.8;
+                padding-right: 8px;
+                padding-top: 4px;
+                font-weight: 900;
+                font-family: serif;
+                margin-bottom: -6px;
+                cursor: none !important;
+            }
+            
+            .theme-dark.drop-caps-enabled .tiptap-editor-readonly p:first-of-type:first-letter {
+                color: #dc2626;
+                text-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
+            }
+            
+            .theme-light.drop-caps-enabled .tiptap-editor-readonly p:first-of-type:first-letter {
+                color: #991b1b;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
             
             .theme-dark .tiptap-editor-readonly { color: #d1d5db; }
             .theme-dark .tiptap-editor-readonly p { margin-bottom: 1.5em; line-height: 1.8; }
