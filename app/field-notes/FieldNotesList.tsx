@@ -38,7 +38,7 @@ export default function FieldNotesList({ blogs }: { blogs: any[] }) {
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10"
+            className="flex flex-col gap-8 relative z-10 max-w-4xl mx-auto"
         >
             {blogs.map((blog) => (
                 <Link href={`/field-notes/${blog.slug}`} key={blog.id} className="block group" style={{ perspective: '1200px' }}>
