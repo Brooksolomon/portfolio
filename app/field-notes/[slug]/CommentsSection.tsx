@@ -45,7 +45,7 @@ export default function CommentsSection({ blogId, blogSlug, initialComments }: a
     // Parse flat comments into nested threaded structure using hidden prefixes
     const parsedComments = initialComments?.map((comment: any) => {
         // use regex to match [REPLY_TO:id] at the start, ignoring newlines afterwards softly
-        const match = comment.content.match(/^\[REPLY_TO:([^\]]+)\]\s*(.*)/s)
+        const match = comment.content.match(/^\[REPLY_TO:([^\]]+)\]\s*([\s\S]*)/)
         return {
             ...comment,
             parentId: match ? match[1] : null,
