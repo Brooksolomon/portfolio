@@ -28,6 +28,7 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
     const [enableDropCaps, setEnableDropCaps] = useState(true)
     const [savedPosition, setSavedPosition] = useState(0)
     const [showPositionSaved, setShowPositionSaved] = useState(false)
+    const [showLinkCopied, setShowLinkCopied] = useState(false)
     const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
     
     // Live Users State
@@ -280,6 +281,41 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
         window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' })
     }
 
+    const handleShare = async () => {
+        const url = window.location.href
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+        if (isMobile && navigator.share) {
+            try {
+                await navigator.share({
+                    title: title,
+                    text: 'Check out this intel report:',
+                    url: url,
+                })
+            } catch (err) {
+                // Ignore early aborts
+            }
+        } else {
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(url)
+                } else {
+                    // Fallback for non-secure contexts (HTTP over network)
+                    const textArea = document.createElement("textarea")
+                    textArea.value = url
+                    document.body.appendChild(textArea)
+                    textArea.select()
+                    document.execCommand("Copy")
+                    textArea.remove()
+                }
+                setShowLinkCopied(true)
+                setTimeout(() => setShowLinkCopied(false), 2000)
+            } catch (err) {
+                console.error("Clipboard copy failed.", err)
+            }
+        }
+    }
+
     if (!content || Object.keys(content).length === 0) {
         return <div className="text-gray-600 font-mono italic">No intel has been recorded.</div>
     }
@@ -310,6 +346,21 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
                     >
                         <BookmarkCheck size={16} className="text-green-400" />
                         <span className="font-mono text-xs text-green-400 uppercase tracking-widest">Position Saved</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Link Copied Notification */}
+            <AnimatePresence>
+                {showLinkCopied && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                        className="fixed bottom-8 left-8 z-[300] bg-[#111] border border-red-500/50 shadow-[0_0_20px_rgba(220,38,38,0.3)] rounded-xl p-4 flex items-center gap-3 pointer-events-none"
+                    >
+                        <CheckCircle size={16} className="text-red-400" />
+                        <span className="font-mono text-xs text-red-400 uppercase tracking-widest">Link Copied</span>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -411,6 +462,10 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
                                 <span className={`flex items-center gap-2 ${t ? 'text-gray-400' : 'text-gray-500'}`}>
                                     <Clock size={14} className={t ? 'text-red-500' : 'text-red-600'} /> {readingTime} MIN READ
                                 </span>
+                                <div className="w-[1px] h-3 bg-gray-500/30" />
+                                <button onClick={handleShare} className={`flex items-center gap-2 hover:text-red-400 transition-colors ${t ? 'text-gray-400' : 'text-gray-500'}`} title="Share this intel">
+                                    <Share size={14} /> SHARE
+                                </button>
                             </div>
                             
                             <div className="flex items-center gap-1 sm:gap-2 bg-black/5 rounded-full p-1 border border-black/5 dark:bg-white/5 dark:border-white/5 mx-auto sm:mx-0">
@@ -449,6 +504,16 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
                             <EditorContent editor={editor} />
                         </div>
 
+                        {/* Footer Share */}
+                        <div className={`mt-16 pt-8 border-t ${t ? 'border-white/10' : 'border-black/10'} flex flex-col sm:flex-row items-center justify-between gap-6`}>
+                            <div className="font-mono text-[10px] uppercase tracking-widest text-gray-500 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
+                                END OF INTELLIGENCE REPORT
+                            </div>
+                            <button onClick={handleShare} className={`flex items-center gap-3 px-6 py-3 rounded-full font-mono text-xs font-bold uppercase tracking-widest transition-all shadow-md hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 ${t ? 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border-white/10' : 'bg-black/5 hover:bg-black/10 text-gray-700 hover:text-black border-black/10'} border`}>
+                                <Share size={16} /> Secure Share Link
+                            </button>
+                        </div>
                     </div>
                 </div>
 
