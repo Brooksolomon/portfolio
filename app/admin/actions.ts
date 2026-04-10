@@ -19,10 +19,13 @@ export async function togglePublish(id: string, currentStatus: boolean) {
 export async function createNewBlog() {
     const supabase = await createClient()
 
+    const id = crypto.randomUUID()
+
     // create an empty draft
     const { data, error } = await supabase.from('blogs').insert({
+        id,
         title: 'Untitled Field Note',
-        slug: `draft-${Date.now()}`,
+        slug: id,
         content: {}, // defaults to empty block for novel
         is_published: false
     }).select().single()
