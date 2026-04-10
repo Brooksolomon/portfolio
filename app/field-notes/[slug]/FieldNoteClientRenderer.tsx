@@ -4,11 +4,13 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Youtube from '@tiptap/extension-youtube'
+import Underline from '@tiptap/extension-underline'
+import Color from '@tiptap/extension-color'
+import TextStyle from '@tiptap/extension-text-style'
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Type, Moon, Sun, Clock, BookOpen, Quote, History, Copy, CheckCircle, Eye, EyeOff, Bookmark, BookmarkCheck, HelpCircle, Share } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { toBlob } from 'html-to-image'
 
 // Helper to calculate reading time
 const calculateReadingTime = (text: string) => {
@@ -28,15 +30,6 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
     const [showPositionSaved, setShowPositionSaved] = useState(false)
     const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
     
-    // Share Quote State
-    const [showShareMenu, setShowShareMenu] = useState(false)
-    const [sharePosition, setSharePosition] = useState({ top: 0, left: 0 })
-    const [selectedText, setSelectedText] = useState('')
-    const [isGeneratingQuote, setIsGeneratingQuote] = useState(false)
-    const [copiedQuote, setCopiedQuote] = useState(false)
-    const [copiedText, setCopiedText] = useState(false)
-    const quoteNodeRef = useRef<HTMLDivElement>(null)
-    
     // Live Users State
     const [activeReaders, setActiveReaders] = useState(1)
     
@@ -46,6 +39,9 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
     const containerRef = useRef<HTMLDivElement>(null)
 
     const extensions = [
+        Underline,
+        TextStyle,
+        Color,
         StarterKit.configure({
             heading: {
                 HTMLAttributes: {
@@ -276,255 +272,12 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [isDistractedFree, enableDropCaps, savedPosition])
 
-    // Generate and copy quote image
-    const generateAndCopyQuoteImage = async () => {
-        if (!quoteNodeRef.current || !selectedText) return
-        try {
-            setIsGeneratingQuote(true)
-            
-            // Allow DOM repaints for the invisible frame
-            await new Promise(resolve => setTimeout(resolve, 100))
-            
-            const blob = await toBlob(quoteNodeRef.current, {
-                quality: 1,
-                pixelRatio: 2, // Retina resolution export
-                backgroundColor: '#0e0e0e',
-                width: 800,
-                height: 600
-            })
-            
-            if (blob) {
-                const item = new ClipboardItem({ 'image/png': blob })
-                await navigator.clipboard.write([item])
-                setCopiedQuote(true)
-                setTimeout(() => {
-                    setCopiedQuote(false)
-                    setShowShareMenu(false)
-                }, 2000)
-            } else {
-               throw new Error("Blob failed to render.")
-            }
-        } catch (e) {
-            console.error("Image generation failed: ", e)
-            // Fallback to text copy
-            try {
-                await navigator.clipboard.writeText(selectedText)
-                setCopiedText(true)
-                setTimeout(() => {
-                    setCopiedText(false)
-                    setShowShareMenu(false)
-                }, 2000)
-            } catch (textErr) {
-                console.error("Text copy also failed: ", textErr)
-            }
-        } finally {
-            setTimeout(() => setIsGeneratingQuote(false), 1000)
-        }
-    }
-
-    // Generate image and share to Twitter
-    const shareImageToTwitter = async () => {
-        if (!quoteNodeRef.current || !selectedText) return
-        try {
-            setIsGeneratingQuote(true)
-            
-            await new Promise(resolve => setTimeout(resolve, 100))
-            
-            const blob = await toBlob(quoteNodeRef.current, {
-                quality: 1,
-                pixelRatio: 2,
-                backgroundColor: '#0e0e0e',
-                width: 800,
-                height: 600
-            })
-            
-            if (blob) {
-                // For now, open Twitter with text and URL, as we can't directly upload images via URL
-                const tweetText = `"${selectedText}"\n\nFrom: ${title}\n${window.location.href}`
-                const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
-                window.open(url, '_blank', 'width=550,height=420')
-                setShowShareMenu(false)
-            }
-        } catch (e) {
-            console.error("Twitter image share failed: ", e)
-            // Fallback to text share
-            shareToTwitter()
-        } finally {
-            setIsGeneratingQuote(false)
-        }
-    }
-
-    // Generate image and share to Telegram
-    const shareImageToTelegram = async () => {
-        if (!quoteNodeRef.current || !selectedText) return
-        try {
-            setIsGeneratingQuote(true)
-            
-            await new Promise(resolve => setTimeout(resolve, 100))
-            
-            const blob = await toBlob(quoteNodeRef.current, {
-                quality: 1,
-                pixelRatio: 2,
-                backgroundColor: '#0e0e0e',
-                width: 800,
-                height: 600
-            })
-            
-            if (blob) {
-                // For now, open Telegram with text and URL, as we can't directly upload images via URL
-                const message = `"${selectedText}"\n\nFrom: ${title}\n${window.location.href}`
-                const url = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(message)}`
-                window.open(url, '_blank')
-                setShowShareMenu(false)
-            }
-        } catch (e) {
-            console.error("Telegram image share failed: ", e)
-            // Fallback to text share
-            shareToTelegram()
-        } finally {
-            setIsGeneratingQuote(false)
-        }
-    }
-
-    // Original text-only functions (kept as fallbacks)
-    const copyToClipboard = async () => {
-        try {
-            await navigator.clipboard.writeText(selectedText)
-            setCopiedText(true)
-            setTimeout(() => {
-                setCopiedText(false)
-                setShowShareMenu(false)
-            }, 2000)
-        } catch (err) {
-            console.error('Failed to copy text: ', err)
-        }
-    }
-
-    const shareToTwitter = () => {
-        const tweetText = `"${selectedText}"\n\nFrom: ${title}\n${window.location.href}`
-        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
-        window.open(url, '_blank', 'width=550,height=420')
-        setShowShareMenu(false)
-    }
-
-    const shareToTelegram = () => {
-        const message = `"${selectedText}"\n\nFrom: ${title}\n${window.location.href}`
-        const url = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(message)}`
-        window.open(url, '_blank')
-        setShowShareMenu(false)
-    }
-
     // Function to restore reading position
     const restorePosition = () => {
         if (!containerRef.current || savedPosition <= 0) return
         const rect = containerRef.current.getBoundingClientRect()
         const targetScroll = (savedPosition / 100) * rect.height - window.innerHeight + rect.top + window.scrollY
         window.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' })
-    }
-
-    // Highlight capture
-    useEffect(() => {
-        let selectionTimeout: NodeJS.Timeout | null = null
-
-        const handleMouseUp = (e: MouseEvent) => {
-            // Small delay to ensure selection is complete
-            setTimeout(() => {
-                const selection = window.getSelection()
-                
-                if (!selection || selection.isCollapsed || selection.toString().trim().length === 0) {
-                    return
-                }
-                
-                const range = selection.getRangeAt(0)
-                const rect = range.getBoundingClientRect()
-                
-                // Check if selection is within the article content
-                const isWithinArticle = containerRef.current?.contains(range.commonAncestorContainer) || 
-                                       containerRef.current?.querySelector('.tiptap-editor-readonly')?.contains(range.commonAncestorContainer) ||
-                                       range.commonAncestorContainer.closest?.('.tiptap-editor-readonly') !== null
-                
-                if (isWithinArticle) {
-                    // Position menu right next to the selection
-                    // Check if there's space above, otherwise position below
-                    const spaceAbove = rect.top > 60 // 60px for menu height
-                    const position = {
-                        top: spaceAbove ? rect.top - 60 : rect.bottom + 8,
-                        left: Math.max(10, Math.min(rect.right - 50, window.innerWidth - 250))
-                    }
-                    
-                    setSharePosition(position)
-                    setSelectedText(selection.toString().trim())
-                    setShowShareMenu(true)
-                }
-            }, 10)
-        }
-
-        const handleSelectionChange = () => {
-            const selection = window.getSelection()
-            
-            if (!selection || selection.isCollapsed || selection.toString().trim().length === 0) {
-                if (selectionTimeout) clearTimeout(selectionTimeout)
-                selectionTimeout = setTimeout(() => {
-                    if (!isGeneratingQuote && !copiedText) {
-                        setShowShareMenu(false)
-                    }
-                }, 200)
-            }
-        }
-
-        const handleClickOutside = (e: MouseEvent) => {
-            if (showShareMenu && !(e.target as Element)?.closest('[data-share-menu]')) {
-                setShowShareMenu(false)
-            }
-        }
-        
-        document.addEventListener('mouseup', handleMouseUp)
-        document.addEventListener('touchend', handleMouseUp)
-        document.addEventListener('selectionchange', handleSelectionChange)
-        document.addEventListener('click', handleClickOutside)
-        
-        return () => {
-            if (selectionTimeout) clearTimeout(selectionTimeout)
-            document.removeEventListener('mouseup', handleMouseUp)
-            document.removeEventListener('touchend', handleMouseUp)
-            document.removeEventListener('selectionchange', handleSelectionChange)
-            document.removeEventListener('click', handleClickOutside)
-        }
-    }, [isGeneratingQuote, copiedText, showShareMenu])
-
-    // Quote Image Engine via html2canvas
-    const handleCopyImageContext = async () => {
-        if (!quoteNodeRef.current || !selectedText) return
-        try {
-            setIsGeneratingQuote(true)
-            
-            // Allow DOM repaints for the invisble frame
-            await new Promise(resolve => setTimeout(resolve, 50))
-            
-            const blob = await toBlob(quoteNodeRef.current, {
-                quality: 1,
-                pixelRatio: 2, // Retina resolution export
-                style: { backgroundColor: '#0e0e0e' }
-            })
-            
-            if (blob) {
-                const item = new ClipboardItem({ 'image/png': blob })
-                await navigator.clipboard.write([item])
-                setCopiedQuote(true)
-                setTimeout(() => {
-                    setCopiedQuote(false)
-                    setShowShareMenu(false)
-                }, 2000)
-            } else {
-               throw new Error("Blob failed to render.")
-            }
-        } catch (e) {
-            console.error("Clipboard write failed: ", e)
-            alert('Clipboard permissions or engine failed. Select copy again.')
-            setIsGeneratingQuote(false)
-        } finally {
-            setTimeout(() => setIsGeneratingQuote(false), 2000)
-        }
     }
 
     if (!content || Object.keys(content).length === 0) {
@@ -647,144 +400,6 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
                         <div className="absolute top-1/2 left-0 w-1 h-32 bg-gradient-to-b from-transparent via-red-900/40 to-transparent -translate-y-1/2 rounded-r-md group-hover:h-48 group-hover:via-red-500/60 transition-all duration-700 delay-100" />
                     </>
                 )}
-
-                {/* Hidden Quote Rendering Context for HTML2Image */}
-                {selectedText && (
-                    <div 
-                        ref={quoteNodeRef} 
-                        className="fixed left-[-9999px] top-0 w-[800px] h-[600px] p-16 bg-[#0e0e0e] text-[#EDEDED] font-sans flex flex-col items-center justify-center overflow-hidden"
-                        style={{ 
-                            position: 'fixed',
-                            left: '-9999px',
-                            top: '0',
-                            width: '800px',
-                            height: '600px',
-                            backgroundColor: '#0e0e0e',
-                            zIndex: -1000
-                        }}
-                    >
-                        {/* Background pattern */}
-                        <div className="absolute inset-0 bg-[#0e0e0e]" />
-                        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] mix-blend-overlay" />
-                        
-                        {/* Top red bar */}
-                        <div className="absolute top-0 left-0 w-full h-2 bg-red-800" />
-                        
-                        {/* Case label */}
-                        <div className="absolute top-8 right-8 font-mono text-xs uppercase tracking-[0.3em] text-red-500/80 font-bold border border-red-900/40 px-4 py-2 bg-red-900/10">
-                            CASE #404: INTEL
-                        </div>
-
-                        {/* Main quote container */}
-                        <div className="w-full max-w-[700px] relative z-10 bg-[#141414] shadow-2xl border border-white/10 rounded-3xl p-12 mt-12">
-                            <Quote size={48} className="text-red-900/60 absolute -top-5 -left-5 rotate-180" />
-                            
-                            <p className="font-serif text-2xl leading-relaxed text-gray-100 mt-4 relative z-10 break-words whitespace-pre-wrap text-center">
-                                "{selectedText}"
-                            </p>
-                            
-                            <div className="mt-12 flex items-center justify-between border-t border-white/10 pt-8">
-                               <div className="w-full">
-                                   <div className="font-mono text-base tracking-widest text-red-400 font-bold flex items-center gap-3 justify-center">
-                                       <span className="w-2 h-2 rounded-full bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
-                                       {title.length > 50 ? title.substring(0, 50) + '...' : title}
-                                   </div>
-                                   <div className="font-mono text-xs uppercase tracking-widest text-gray-500 mt-3 pt-1 text-center">
-                                       solocodes.dev/field-notes
-                                   </div>
-                               </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Share Menu - Beautiful UI with proper logos */}
-                <AnimatePresence>
-                    {showShareMenu && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                            className="fixed z-[9999] bg-[#111] border border-red-900/50 shadow-[0_0_20px_rgba(220,38,38,0.5)] rounded-xl p-2 flex items-center gap-1 pointer-events-auto"
-                            style={{ 
-                                top: `${sharePosition.top}px`, 
-                                left: `${sharePosition.left}px`, 
-                                position: 'fixed'
-                            }}
-                            data-share-menu
-                        >
-                            {/* Copy Quote Image */}
-                            <button 
-                                onClick={generateAndCopyQuoteImage} 
-                                disabled={isGeneratingQuote || copiedQuote}
-                                className="text-white hover:bg-white/10 p-2 rounded-lg flex items-center gap-2 text-xs transition-colors disabled:opacity-80"
-                                title="Copy quote image to clipboard"
-                            >
-                                {copiedQuote ? (
-                                    <CheckCircle size={16} className="text-green-400" />
-                                ) : isGeneratingQuote ? (
-                                    <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <Copy size={16} className="text-gray-300" />
-                                )}
-                            </button>
-
-                            <div className="w-[1px] h-6 bg-gray-600" />
-
-                            {/* Share Image to Twitter/X */}
-                            <button 
-                                onClick={shareImageToTwitter}
-                                disabled={isGeneratingQuote}
-                                className="text-white hover:bg-white/10 p-2 rounded-lg flex items-center gap-2 text-xs transition-colors disabled:opacity-80"
-                                title="Share quote image to X (Twitter)"
-                            >
-                                {isGeneratingQuote ? (
-                                    <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-gray-300">
-                                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                                    </svg>
-                                )}
-                            </button>
-
-                            <div className="w-[1px] h-6 bg-gray-600" />
-
-                            {/* Share Image to Telegram */}
-                            <button 
-                                onClick={shareImageToTelegram}
-                                disabled={isGeneratingQuote}
-                                className="text-white hover:bg-white/10 p-2 rounded-lg flex items-center gap-2 text-xs transition-colors disabled:opacity-80"
-                                title="Share quote image to Telegram"
-                            >
-                                {isGeneratingQuote ? (
-                                    <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-gray-300">
-                                        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                                    </svg>
-                                )}
-                            </button>
-
-                            <div className="w-[1px] h-6 bg-gray-600" />
-
-                            {/* Generate Quote Image */}
-                            <button 
-                                onClick={handleCopyImageContext} 
-                                disabled={isGeneratingQuote || copiedQuote}
-                                className="text-white hover:bg-white/10 p-2 rounded-lg flex items-center gap-2 text-xs transition-colors disabled:opacity-80"
-                                title="Generate quote image"
-                            >
-                                {copiedQuote ? (
-                                    <CheckCircle size={16} className="text-green-400" />
-                                ) : isGeneratingQuote ? (
-                                    <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <Quote size={16} className="text-red-400" />
-                                )}
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
 
                 <div className="p-6 md:p-12">
                     {/* Main Content Pane */}

@@ -7,7 +7,10 @@ import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Image from '@tiptap/extension-image'
 import Youtube from '@tiptap/extension-youtube'
-import { Image as ImageIcon, Video, Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code, Bold, Italic, Strikethrough } from 'lucide-react'
+import Underline from '@tiptap/extension-underline'
+import Color from '@tiptap/extension-color'
+import TextStyle from '@tiptap/extension-text-style'
+import { Image as ImageIcon, Video, Heading1, Heading2, Heading3, List, ListOrdered, Quote, Code, Bold, Italic, Strikethrough, Underline as UnderlineIcon, Palette } from 'lucide-react'
 
 export default function EditorClientWrapper({ blog }: { blog: any }) {
     const [title, setTitle] = useState(blog.title)
@@ -22,6 +25,9 @@ export default function EditorClientWrapper({ blog }: { blog: any }) {
         content: content || null,
         extensions: [
             StarterKit,
+            Underline,
+            TextStyle,
+            Color,
             Placeholder.configure({
                 placeholder: "Type '/' for commands or start typing intel...",
             }),
@@ -112,6 +118,7 @@ export default function EditorClientWrapper({ blog }: { blog: any }) {
                             <div className="w-px h-6 md:w-6 md:h-px bg-gray-800 mx-2 md:mx-0 md:my-1 shrink-0" />
                             <button onClick={() => editor.chain().focus().toggleBold().run()} className={`p-2 rounded-lg hover:bg-gray-800 transition-colors shrink-0 ${editor.isActive('bold') ? 'text-red-400 bg-red-900/10' : 'text-gray-400'}`} title="Bold"><Bold size={18} /></button>
                             <button onClick={() => editor.chain().focus().toggleItalic().run()} className={`p-2 rounded-lg hover:bg-gray-800 transition-colors shrink-0 ${editor.isActive('italic') ? 'text-red-400 bg-red-900/10' : 'text-gray-400'}`} title="Italic"><Italic size={18} /></button>
+                            <button onClick={() => editor.chain().focus().toggleUnderline().run()} className={`p-2 rounded-lg hover:bg-gray-800 transition-colors shrink-0 ${editor.isActive('underline') ? 'text-red-400 bg-red-900/10' : 'text-gray-400'}`} title="Underline"><UnderlineIcon size={18} /></button>
                             <button onClick={() => editor.chain().focus().toggleStrike().run()} className={`p-2 rounded-lg hover:bg-gray-800 transition-colors shrink-0 ${editor.isActive('strike') ? 'text-red-400 bg-red-900/10' : 'text-gray-400'}`} title="Strike"><Strikethrough size={18} /></button>
                             <button onClick={() => editor.chain().focus().toggleCode().run()} className={`p-2 rounded-lg hover:bg-gray-800 transition-colors shrink-0 ${editor.isActive('code') ? 'text-red-400 bg-red-900/10' : 'text-gray-400'}`} title="Code"><Code size={18} /></button>
                             <div className="w-px h-6 md:w-6 md:h-px bg-gray-800 mx-2 md:mx-0 md:my-1 shrink-0" />
@@ -127,10 +134,29 @@ export default function EditorClientWrapper({ blog }: { blog: any }) {
 
                 <div className="flex-1 p-6 md:p-10 min-h-[500px] relative md:order-1 min-w-0">
                     {editor && (
-                        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} className="flex gap-1 bg-[#1a1a1a] p-1.5 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.8)] border border-gray-700 backdrop-blur-md">
+                        <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} className="flex gap-1 bg-[#1a1a1a] p-1.5 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.8)] border border-gray-700 backdrop-blur-md items-center">
                             <button onClick={() => editor.chain().focus().toggleBold().run()} className={`p-1.5 rounded ${editor.isActive('bold') ? 'bg-red-900/50 text-white' : 'hover:bg-gray-800 text-gray-400 hover:text-white'}`}><Bold size={16} /></button>
                             <button onClick={() => editor.chain().focus().toggleItalic().run()} className={`p-1.5 rounded ${editor.isActive('italic') ? 'bg-red-900/50 text-white' : 'hover:bg-gray-800 text-gray-400 hover:text-white'}`}><Italic size={16} /></button>
+                            <button onClick={() => editor.chain().focus().toggleUnderline().run()} className={`p-1.5 rounded ${editor.isActive('underline') ? 'bg-red-900/50 text-white' : 'hover:bg-gray-800 text-gray-400 hover:text-white'}`}><UnderlineIcon size={16} /></button>
                             <button onClick={() => editor.chain().focus().toggleStrike().run()} className={`p-1.5 rounded ${editor.isActive('strike') ? 'bg-red-900/50 text-white' : 'hover:bg-gray-800 text-gray-400 hover:text-white'}`}><Strikethrough size={16} /></button>
+                            
+                            <div className="w-px h-4 bg-gray-700 mx-1" />
+                            <button onClick={() => editor.chain().focus().setColor('#ef4444').run()} className="w-5 h-5 rounded-full bg-[#ef4444] border-2 border-transparent hover:border-white transition-all ml-0.5" title="Red"></button>
+                            <button onClick={() => editor.chain().focus().setColor('#3b82f6').run()} className="w-5 h-5 rounded-full bg-[#3b82f6] border-2 border-transparent hover:border-white transition-all mx-0.5" title="Blue"></button>
+                            <button onClick={() => editor.chain().focus().setColor('#22c55e').run()} className="w-5 h-5 rounded-full bg-[#22c55e] border-2 border-transparent hover:border-white transition-all mx-0.5" title="Green"></button>
+                            <button onClick={() => editor.chain().focus().setColor('#eab308').run()} className="w-5 h-5 rounded-full bg-[#eab308] border-2 border-transparent hover:border-white transition-all mx-0.5" title="Yellow"></button>
+                            
+                            <label className="cursor-pointer flex items-center justify-center p-1.5 rounded hover:bg-gray-800 transition-colors ml-0.5" title="Custom Color">
+                                <input 
+                                    type="color" 
+                                    className="opacity-0 w-0 h-0 absolute"
+                                    onInput={(e) => editor.chain().focus().setColor((e.target as HTMLInputElement).value).run()}
+                                    value={editor.getAttributes('textStyle').color || '#ffffff'}
+                                />
+                                <Palette size={16} className="text-gray-400 hover:text-white" style={{ color: editor.getAttributes('textStyle').color }} />
+                            </label>
+                            
+                            <button onClick={() => editor.chain().focus().unsetColor().run()} className="p-1 rounded text-[10px] uppercase font-mono text-gray-500 hover:text-white hover:bg-gray-800 mx-0.5 tracking-widest" title="Clear Color">Clear</button>
                         </BubbleMenu>
                     )}
 
