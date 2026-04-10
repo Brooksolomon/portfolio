@@ -6,13 +6,17 @@ import { revalidatePath } from 'next/cache'
 export async function incrementViewCount(slug: string) {
     const supabase = await createClient()
 
-    // We can just execute an RPC if defined, but simple query to increment:
-    const { data: blog } = await supabase.from('blogs').select('view_count, id').eq('slug', slug).single()
+    // 1. Attempt Atomic RPC Increment (zero race conditions)
+    const { error: rpcError } = await supabase.rpc('increment_view_count', { target_slug: slug })
 
-    if (blog) {
-        await supabase.from('blogs')
-            .update({ view_count: (blog.view_count || 0) + 1 })
-            .eq('id', blog.id)
+    // 2. Fallback to basic sequential read-modify-update if RPC doesn't exist
+    if (rpcError) {
+        const { data: blog } = await supabase.from('blogs').select('view_count, id').eq('slug', slug).single()
+        if (blog) {
+            await supabase.from('blogs')
+                .update({ view_count: (blog.view_count || 0) + 1 })
+                .eq('id', blog.id)
+        }
     }
 }
 

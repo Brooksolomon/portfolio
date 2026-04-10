@@ -46,3 +46,13 @@ WITH CHECK (true);
 CREATE POLICY "Admins can do everything on comments"
 ON comments FOR ALL
 USING (auth.role() = 'authenticated');
+
+-- Atomic View Counter RPC
+CREATE OR REPLACE FUNCTION increment_view_count(target_slug TEXT)
+RETURNS void AS $$
+BEGIN
+  UPDATE blogs
+  SET view_count = COALESCE(view_count, 0) + 1
+  WHERE slug = target_slug;
+END;
+$$ LANGUAGE plpgsql;

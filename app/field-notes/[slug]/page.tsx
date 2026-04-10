@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { incrementViewCount, getComments } from './actions'
+import { after } from 'next/server'
 import FieldNoteClientRenderer from './FieldNoteClientRenderer'
 import CommentsSection from './CommentsSection'
 
@@ -25,8 +26,11 @@ export default async function FieldNoteDetail({ params }: { params: Promise<{ sl
     // Fetch comments array
     const comments = await getComments(blog.id)
 
-    // Fire-and-forget view count increment
-    incrementViewCount(slug).catch(console.error)
+    // Fire-and-forget view count increment inside Next.js 'after' callback
+    // This allows Vercel to safely keep the function context alive without blocking the page load
+    after(() => {
+        incrementViewCount(slug).catch(console.error)
+    })
 
     return (
         <div className="min-h-screen relative font-sans selection:bg-red-900/50 selection:text-white">
