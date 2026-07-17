@@ -2,6 +2,8 @@ import { sql } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import EditorClientWrapper from './EditorClientWrapper'
 
+export const dynamic = 'force-dynamic'
+
 export default async function EditorPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = await params;
     const id = resolvedParams.id;

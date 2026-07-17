@@ -2,6 +2,8 @@ import { sql } from '@/lib/db'
 import { deleteBlog, togglePublish, createNewBlog } from './actions'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AdminDashboard() {
     const blogs = await sql`SELECT * FROM blogs ORDER BY created_at DESC`
 
