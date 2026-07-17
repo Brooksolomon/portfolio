@@ -1,0 +1,25 @@
+# Deploy variant for a server running the SHARED Caddy proxy (see server-infra).
+# The project's own Caddy is NOT started (use --scale caddy=0); instead the web
+# container joins the external "proxy" network as "portfolio-web" so the central
+# Caddy can route a domain to it.
+#
+#   docker network create proxy        # one time, server-wide
+#   docker compose -f docker-compose.yml -f docker-compose.shared.yml \
+#       --env-file .env.prod up -d --build --scale caddy=0
+#
+# Then add to the shared Caddyfile (server-infra/Caddyfile):
+#   yourdomain.com { reverse_proxy portfolio-web:3000 }
+#   docker compose -f server-infra/docker-compose.yml exec caddy caddy reload --config /etc/caddy/Caddyfile
+
+services:
+  web:
+    container_name: portfolio-web
+    networks:
+      - default
+      - proxy
+
+  # postgres remains on the project's default (private) network only.
+
+networks:
+  proxy:
+    external: true

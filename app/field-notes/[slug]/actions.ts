@@ -1,47 +1,26 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { sql } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 
 export async function incrementViewCount(slug: string) {
-    const supabase = await createClient()
-
-    // 1. Attempt Atomic RPC Increment (zero race conditions)
-    const { error: rpcError } = await supabase.rpc('increment_view_count', { target_slug: slug })
-
-    // 2. Fallback to basic sequential read-modify-update if RPC doesn't exist
-    if (rpcError) {
-        const { data: blog } = await supabase.from('blogs').select('view_count, id').eq('slug', slug).single()
-        if (blog) {
-            await supabase.from('blogs')
-                .update({ view_count: (blog.view_count || 0) + 1 })
-                .eq('id', blog.id)
-        }
-    }
+    await sql`SELECT increment_view_count(${slug})`
 }
 
 export async function getComments(blogId: string) {
-    const supabase = await createClient()
-    const { data, error } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('blog_id', blogId)
-        .order('created_at', { ascending: true })
-
-    return data || []
+    return sql`SELECT * FROM comments WHERE blog_id = ${blogId} ORDER BY created_at ASC`
 }
 
 export async function postComment(blogId: string, content: string, anonymousUserId: string, blogSlug: string) {
-    const supabase = await createClient()
-    const { error } = await supabase.from('comments').insert({
-        blog_id: blogId,
-        content,
-        anonymous_user_id: anonymousUserId
-    })
-
-    if (!error) {
-        revalidatePath(`/field-notes/${blogSlug}`)
-        return { success: true }
+    try {
+        await sql`
+            INSERT INTO comments (blog_id, content, anonymous_user_id)
+            VALUES (${blogId}, ${content}, ${anonymousUserId})
+        `
+    } catch (error: any) {
+        return { success: false, error: error.message }
     }
-    return { success: false, error: error.message }
+
+    revalidatePath(`/field-notes/${blogSlug}`)
+    return { success: true }
 }

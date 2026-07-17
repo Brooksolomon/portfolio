@@ -1,19 +1,14 @@
-import { createClient } from '@/lib/supabase/server'
+import { sql } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import EditorClientWrapper from './EditorClientWrapper'
 
 export default async function EditorPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = await params;
     const id = resolvedParams.id;
-    const supabase = await createClient()
 
-    const { data: blog, error } = await supabase
-        .from('blogs')
-        .select('*')
-        .eq('id', id)
-        .single()
+    const [blog] = await sql`SELECT * FROM blogs WHERE id = ${id}`
 
-    if (error || !blog) {
+    if (!blog) {
         notFound()
     }
 

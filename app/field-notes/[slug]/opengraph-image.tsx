@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og'
-import { createClient } from '@/lib/supabase/server'
+import { sql } from '@/lib/db'
 
 // Route segment config
 export const alt = 'solocodes.dev Field Notes'
@@ -12,14 +12,8 @@ export const contentType = 'image/png'
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = await params
   const slug = resolvedParams.slug
-  const supabase = await createClient()
 
-  // Fetch blog
-  const { data: blog } = await supabase
-    .from('blogs')
-    .select('title, created_at, id')
-    .eq('slug', slug)
-    .single()
+  const [blog] = await sql`SELECT title, created_at, id FROM blogs WHERE slug = ${slug}`
 
   const title = blog?.title || 'Field Notes - Classified Intel'
   const date = blog?.created_at ? new Date(blog.created_at).toLocaleDateString() : new Date().toLocaleDateString()

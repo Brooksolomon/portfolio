@@ -1,14 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
+import { sql } from '@/lib/db'
 import { deleteBlog, togglePublish, createNewBlog } from './actions'
 import Link from 'next/link'
 
 export default async function AdminDashboard() {
-    const supabase = await createClient()
-
-    const { data: blogs } = await supabase
-        .from('blogs')
-        .select('*')
-        .order('created_at', { ascending: false })
+    const blogs = await sql`SELECT * FROM blogs ORDER BY created_at DESC`
 
     return (
         <div className="space-y-8 font-sans">

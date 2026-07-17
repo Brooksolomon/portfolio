@@ -49,7 +49,9 @@ USING (auth.role() = 'authenticated');
 
 -- Atomic View Counter RPC
 CREATE OR REPLACE FUNCTION increment_view_count(target_slug TEXT)
-RETURNS void AS $$
+RETURNS void
+SECURITY DEFINER
+AS $$
 BEGIN
   UPDATE blogs
   SET view_count = COALESCE(view_count, 0) + 1

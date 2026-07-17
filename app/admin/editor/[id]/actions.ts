@@ -1,13 +1,15 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { sql } from '@/lib/db'
+import { requireAdmin } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 
 export async function saveBlogContent(id: string, title: string, content: any) {
-    const supabase = await createClient()
-    const { error } = await supabase.from('blogs').update({ title, content }).eq('id', id)
+    await requireAdmin()
 
-    if (error) {
+    try {
+        await sql`UPDATE blogs SET title = ${title}, content = ${sql.json(content)} WHERE id = ${id}`
+    } catch (error: any) {
         console.error("Failed to save blog:", error)
         return { success: false, error: error.message }
     }

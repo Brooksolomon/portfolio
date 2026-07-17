@@ -1,38 +1,34 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { sql } from '@/lib/db'
+import { requireAdmin } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 export async function deleteBlog(id: string) {
-    const supabase = await createClient()
-    await supabase.from('blogs').delete().eq('id', id)
+    await requireAdmin()
+    await sql`DELETE FROM blogs WHERE id = ${id}`
     revalidatePath('/admin')
 }
 
 export async function togglePublish(id: string, currentStatus: boolean) {
-    const supabase = await createClient()
-    await supabase.from('blogs').update({ is_published: !currentStatus }).eq('id', id)
+    await requireAdmin()
+    await sql`UPDATE blogs SET is_published = ${!currentStatus} WHERE id = ${id}`
     revalidatePath('/admin')
 }
 
 export async function createNewBlog() {
-    const supabase = await createClient()
+    await requireAdmin()
 
     const id = crypto.randomUUID()
 
-    // create an empty draft
-    const { data, error } = await supabase.from('blogs').insert({
-        id,
-        title: 'Untitled Field Note',
-        slug: id,
-        content: {}, // defaults to empty block for novel
-        is_published: false
-    }).select().single()
+    const [blog] = await sql`
+        INSERT INTO blogs (id, title, slug, content, is_published)
+        VALUES (${id}, 'Untitled Field Note', ${id}, ${sql.json({})}, false)
+        RETURNING id
+    `
 
-    if (!error && data) {
-        redirect(`/admin/editor/${data.id}`)
-    } else {
-        console.error(error)
+    if (blog) {
+        redirect(`/admin/editor/${blog.id}`)
     }
 }

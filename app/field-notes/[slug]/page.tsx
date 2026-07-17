@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { sql } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import { incrementViewCount, getComments } from './actions'
 import { after } from 'next/server'
@@ -10,16 +10,10 @@ export const dynamic = 'force-dynamic'
 export default async function FieldNoteDetail({ params }: { params: Promise<{ slug: string }> }) {
     const resolvedParams = await params;
     const slug = resolvedParams.slug;
-    const supabase = await createClient()
 
-    const { data: blog, error } = await supabase
-        .from('blogs')
-        .select('*')
-        .eq('slug', slug)
-        .eq('is_published', true)
-        .single()
+    const [blog] = await sql`SELECT * FROM blogs WHERE slug = ${slug} AND is_published = true`
 
-    if (error || !blog) {
+    if (!blog) {
         notFound()
     }
 

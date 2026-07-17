@@ -9,8 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.10.0",
-    "@supabase/supabase-js": "^2.101.1",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.9.6",
+    "postgres": "^3.4.5",
     "@tiptap/core": "2.11.5",
     "@tiptap/extension-color": "2.11.5",
     "@tiptap/extension-horizontal-rule": "2.11.5",
@@ -38,6 +39,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

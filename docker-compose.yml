@@ -1,0 +1,70 @@
+# Full self-contained stack for a single VPS.
+#   - caddy    : reverse proxy + automatic HTTPS (Let's Encrypt)
+#   - web      : Next.js app (this repo)
+#   - postgres : the database (data lives in a named volume)
+#
+# Bring up:  docker compose --env-file .env.prod up -d --build
+#
+# If deploying onto a server that already runs a SHARED Caddy (see
+# server-infra/README.md), use docker-compose.shared.yml instead — see
+# DEPLOY.md.
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN=${DOMAIN}
+    depends_on:
+      - web
+
+  web:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-portfolio}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-portfolio}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+      - SESSION_SECRET=${SESSION_SECRET}
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-portfolio}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-portfolio}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      # Migrations run automatically on a FRESH database (first init only).
+      # Files run in alphabetical order, so 001_, 002_, ... are applied in order.
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-portfolio} -d ${POSTGRES_DB:-portfolio}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Bind to localhost only — never exposed to the internet. Remote access
+    # (backups, one-off queries) goes through an SSH tunnel.
+    # POSTGRES_HOST_PORT lets local dev remap this if 5432 is already taken
+    # on the host (e.g. by a native Postgres install) — defaults to 5432.
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pg_data:

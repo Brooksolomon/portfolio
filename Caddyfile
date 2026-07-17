@@ -1,0 +1,9 @@
+# Automatic HTTPS for your domain. Caddy fetches + renews Let's Encrypt certs.
+# Set DOMAIN in .env.prod (e.g. yourdomain.com).
+# Only used for a standalone deploy (docker-compose.yml without the shared
+# override) — see DEPLOY.md.
+
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy web:3000
+}

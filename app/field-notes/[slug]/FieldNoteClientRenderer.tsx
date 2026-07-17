@@ -5,12 +5,11 @@ import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Youtube from '@tiptap/extension-youtube'
 import Underline from '@tiptap/extension-underline'
-import Color from '@tiptap/extension-color'
-import TextStyle from '@tiptap/extension-text-style'
+import { Color } from '@tiptap/extension-color'
+import { TextStyle } from '@tiptap/extension-text-style'
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Type, Moon, Sun, Clock, BookOpen, Quote, History, Copy, CheckCircle, Eye, EyeOff, Bookmark, BookmarkCheck, HelpCircle, Share } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 
 // Helper to calculate reading time
 const calculateReadingTime = (text: string) => {
@@ -30,9 +29,6 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
     const [showPositionSaved, setShowPositionSaved] = useState(false)
     const [showLinkCopied, setShowLinkCopied] = useState(false)
     const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
-    
-    // Live Users State
-    const [activeReaders, setActiveReaders] = useState(1)
     
     // History State
     const [readingHistory, setReadingHistory] = useState<{slug: string, title: string, date: number}[]>([])
@@ -149,29 +145,6 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
         
         return () => clearTimeout(timer)
     }, [content, editor])
-
-    // Realtime Collaborative Presence Tracker
-    useEffect(() => {
-        if (!slug) return
-        const supabase = createClient()
-        const channel = supabase.channel(`online-users-${slug}`)
-        
-        channel
-            .on('presence', { event: 'sync' }, () => {
-                const state = channel.presenceState()
-                let count = 0
-                for (const key in state) count++
-                setActiveReaders(count > 0 ? count : 1)
-            })
-            .subscribe(async (status) => {
-                if (status === 'SUBSCRIBED') {
-                    const anonId = localStorage.getItem('case_404_anon_id') || ('anon-' + Math.random().toString(36).substring(2, 8))
-                    await channel.track({ user: anonId })
-                }
-            })
-            
-        return () => { channel.unsubscribe() }
-    }, [slug])
 
     // Reading History
     useEffect(() => {
@@ -415,19 +388,6 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* Top Right Navbar Header Override via Fixed Placement */}
-            <div className={`fixed top-4 right-4 md:right-8 z-[200] pointer-events-none drop-shadow-xl animate-fade-in flex items-center gap-3 transition-opacity duration-500 ${isDistractedFree ? 'opacity-20 hover:opacity-100' : 'opacity-100'}`}>
-                <div className="bg-[#1a1a1a]/80 backdrop-blur-md px-4 py-2 rounded-xl border border-red-900/40 shadow-[0_0_20px_rgba(220,38,38,0.15)] flex items-center gap-3">
-                    <div className="relative flex items-center justify-center">
-                        <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping absolute" />
-                        <div className="w-2.5 h-2.5 bg-red-500 rounded-full relative shadow-[0_0_8px_rgba(220,38,38,0.8)]" />
-                    </div>
-                    <div className="font-mono text-[9px] md:text-xs font-bold text-gray-300 uppercase tracking-widest">
-                        {activeReaders} {activeReaders === 1 ? 'AGENT' : 'AGENTS'} READING
-                    </div>
-                </div>
-            </div>
 
             {/* Reading Progress HUD (Visible on Desktop Left Edge) */}
             <div className={`fixed top-1/2 left-2 md:left-6 -translate-y-1/2 z-50 flex-col items-center gap-4 pointer-events-none hidden xl:flex transition-opacity duration-500 ${isDistractedFree ? 'opacity-20 hover:opacity-100' : 'opacity-100'}`}>

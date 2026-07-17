@@ -1,17 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
+import { sql } from '@/lib/db'
 import { CrimeTape } from '@/components/ui/CrimeTape'
 import FieldNotesList from './FieldNotesList'
 
 export const dynamic = 'force-dynamic'
 
 export default async function FieldNotesIndex() {
-    const supabase = await createClient()
-
-    const { data: blogs } = await supabase
-        .from('blogs')
-        .select('*')
-        .eq('is_published', true)
-        .order('created_at', { ascending: false })
+    const blogs = await sql`SELECT * FROM blogs WHERE is_published = true ORDER BY created_at DESC`
 
     return (
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 relative font-sans min-h-screen selection:bg-red-900/50 selection:text-white">
