@@ -34,6 +34,10 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
       - SESSION_SECRET=${SESSION_SECRET}
+      # Next's standalone server.js defaults to binding 127.0.0.1 inside the
+      # container, which refuses connections from other containers (Caddy).
+      # Must bind all interfaces to be reachable over the docker network.
+      - HOSTNAME=0.0.0.0
     expose:
       - "3000"
     depends_on:
