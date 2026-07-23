@@ -22,7 +22,7 @@ services:
       - traefik.docker.network=proxy
       - traefik.http.routers.portfolio.rule=Host(`solocodes.dev`)
       - traefik.http.routers.portfolio.entrypoints=websecure
-      - traefik.http.routers.portfolio.tls.certresolver=cloudflare
+      - traefik.http.routers.portfolio.tls.certresolver=letsencrypt
       - traefik.http.services.portfolio.loadbalancer.server.port=3000
       - traefik.http.middlewares.portfolio-compress.compress=true
       - traefik.http.routers.portfolio.middlewares=portfolio-compress
