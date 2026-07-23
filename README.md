@@ -5,7 +5,7 @@
 
 A themed portfolio built as a crime-scene investigation: red strings, polaroids, evidence boards, and a suspect profile. Fully responsive with a custom cursor (desktop), hamburger nav (mobile), and the same artifact components in a list-on-mobile layout.
 
-**Live:** [solocodes.dev](https://solocodes.dev) · deployed via [EthioDeploy](https://ethiodeploy.com)
+**Live:** [solocodes.dev](https://solocodes.dev)
 
 ---
 
