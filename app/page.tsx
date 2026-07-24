@@ -41,7 +41,7 @@ export default function Home() {
           />
 
           <h1 className="text-4xl sm:text-6xl md:text-8xl font-display text-accent-red tracking-tighter drop-shadow-[0_0_15px_rgba(139,0,0,0.5)] mb-2">
-            CASE #404
+            CASE #505
           </h1>
           <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-accent-red to-transparent mb-4 opacity-50" />
           <h2 className="text-base sm:text-xl md:text-2xl font-display text-paper-yellow opacity-90 tracking-[0.15em] sm:tracking-[0.2em] uppercase px-1">
