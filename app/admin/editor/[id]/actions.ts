@@ -16,5 +16,6 @@ export async function saveBlogContent(id: string, title: string, content: any) {
 
     revalidatePath('/admin')
     revalidatePath(`/admin/editor/${id}`)
+    revalidatePath('/field-notes')
     return { success: true }
 }

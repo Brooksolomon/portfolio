@@ -3,8 +3,35 @@
 import { useState, useMemo, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { Polaroid } from "@/components/ui/Polaroid";
 import { X, Search, Filter, ChevronLeft, ChevronRight, Github, ExternalLink } from "lucide-react";
+
+// Intrinsic pixel dimensions, used to size next/image without distortion/CLS
+const IMAGE_DIMS: Record<string, [number, number]> = {
+    "/images/projects/totals/1.png": [597, 1280],
+    "/images/projects/totals/2.png": [597, 1280],
+    "/images/projects/totals/3.png": [597, 1280],
+    "/images/projects/totals/4.png": [1280, 800],
+    "/images/projects/binger/1.png": [2000, 1214],
+    "/images/projects/binger/2.png": [1280, 800],
+    "/images/projects/opus/1.png": [597, 1280],
+    "/images/projects/opus/2.png": [597, 1280],
+    "/images/projects/opus/3.png": [597, 1280],
+    "/images/projects/webmtp/1.png": [1280, 782],
+    "/images/projects/webmtp/2.png": [1280, 779],
+    "/images/projects/ora/1.png": [1280, 804],
+    "/images/projects/chakka/1.png": [1280, 720],
+    "/images/projects/chakka/2.png": [1280, 720],
+    "/images/projects/portfolio/1.png": [2000, 1250],
+    "/images/projects/portfolio/2.png": [2000, 1250],
+    "/images/projects/boxsy/1.png": [2000, 1250],
+    "/images/projects/boxsy/2.png": [2000, 995],
+};
+
+function imgDims(src: string): [number, number] {
+    return IMAGE_DIMS[src] || [1280, 800];
+}
 
 // Mock Data
 interface Project {
@@ -422,9 +449,12 @@ function EvidenceContent() {
                                                     className="sm:col-span-2 relative bg-gray-200 border border-gray-300 p-2 shadow-lg transform rotate-1 hover:rotate-0 transition-all duration-500 group/img cursor-zoom-in overflow-hidden h-fit"
                                                     onClick={() => setFullscreenImageIndex(0)}
                                                 >
-                                                    <img
+                                                    <Image
                                                         src={selectedItem.images[0]}
                                                         alt={`${selectedItem.title} 1`}
+                                                        width={imgDims(selectedItem.images[0])[0]}
+                                                        height={imgDims(selectedItem.images[0])[1]}
+                                                        sizes="(max-width: 640px) 100vw, 60vw"
                                                         className="w-full h-auto grayscale border border-black/10 group-hover/img:grayscale-0 transition-all duration-500"
                                                     />
                                                     <div className="absolute top-3 right-3 bg-black/80 text-white text-[9px] px-2 py-0.5 font-mono uppercase tracking-tighter">
@@ -435,13 +465,15 @@ function EvidenceContent() {
                                                     {selectedItem.images.slice(1).map((img, idx) => (
                                                         <div
                                                             key={idx}
-                                                            className={`relative bg-gray-200 border border-gray-300 p-1.5 shadow-md transform ${idx % 2 === 0 ? '-rotate-2' : 'rotate-2'} hover:rotate-0 transition-all duration-300 group/img cursor-zoom-in`}
+                                                            className={`relative aspect-square bg-gray-200 border border-gray-300 p-1.5 shadow-md transform ${idx % 2 === 0 ? '-rotate-2' : 'rotate-2'} hover:rotate-0 transition-all duration-300 group/img cursor-zoom-in overflow-hidden`}
                                                             onClick={() => setFullscreenImageIndex(idx + 1)}
                                                         >
-                                                            <img
+                                                            <Image
                                                                 src={img}
                                                                 alt={`${selectedItem.title} ${idx + 2}`}
-                                                                className="w-full aspect-square object-cover grayscale border border-black/10 group-hover/img:grayscale-0 transition-all duration-500"
+                                                                fill
+                                                                sizes="(max-width: 640px) 50vw, 20vw"
+                                                                className="object-cover grayscale border border-black/10 group-hover/img:grayscale-0 transition-all duration-500"
                                                             />
                                                             <div className="absolute top-1 right-1 bg-black/80 text-white text-[7px] px-1 font-mono uppercase tracking-tighter">
                                                                 FILE_{idx + 2}
@@ -455,10 +487,13 @@ function EvidenceContent() {
                                                 className="relative bg-white/50 border border-gray-300 p-2 shadow-md transform rotate-1 hover:rotate-0 transition-all duration-500 group/img cursor-zoom-in"
                                                 onClick={() => setFullscreenImageIndex(0)}
                                             >
-                                                <img
+                                                <Image
                                                     src={selectedItem.images[0]}
                                                     alt={selectedItem.title}
-                                                    className="w-full grayscale border border-black/10 group-hover/img:grayscale-0 transition-all duration-500"
+                                                    width={imgDims(selectedItem.images[0])[0]}
+                                                    height={imgDims(selectedItem.images[0])[1]}
+                                                    sizes="(max-width: 640px) 100vw, 60vw"
+                                                    className="w-full h-auto grayscale border border-black/10 group-hover/img:grayscale-0 transition-all duration-500"
                                                 />
                                                 <div className="absolute top-2 right-2 bg-black/80 text-white text-[8px] px-1 font-mono uppercase tracking-tighter">
                                                     SOLE_EXHIBIT
@@ -580,10 +615,13 @@ function EvidenceContent() {
                             className="relative max-w-full max-h-full flex items-center justify-center"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <img
+                            <Image
                                 src={selectedItem.images[fullscreenImageIndex]}
                                 alt="Evidence Focus"
-                                className="max-w-full max-h-[85vh] object-contain shadow-[0_0_100px_rgba(0,0,0,0.5)] border-4 border-white/10"
+                                width={imgDims(selectedItem.images[fullscreenImageIndex])[0]}
+                                height={imgDims(selectedItem.images[fullscreenImageIndex])[1]}
+                                sizes="90vw"
+                                className="w-auto h-auto max-w-full max-h-[85vh] object-contain shadow-[0_0_100px_rgba(0,0,0,0.5)] border-4 border-white/10"
                             />
 
                             {/* Metadata Overlay */}

@@ -46,10 +46,12 @@ export function Polaroid({
             </div>
 
             <div className="relative bg-gray-100 grayscale hover:grayscale-0 transition-all duration-500 overflow-hidden aspect-square flex items-center justify-center">
-                <img
+                <Image
                     src={src}
                     alt={alt}
-                    className="max-w-full max-h-full object-contain block"
+                    fill
+                    sizes="(max-width: 640px) 240px, 280px"
+                    className="object-contain"
                 />
                 {/* Paper Texture Overlay */}
                 <div className="absolute inset-0 pointer-events-none opacity-40 mix-blend-multiply"

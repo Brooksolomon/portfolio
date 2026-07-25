@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Special_Elite, Permanent_Marker } from "next/font/google";
 import { Navigation } from "@/components/Navigation";
-import { CustomCursor } from "@/components/CustomCursor";
+import { CustomCursorLoader } from "@/components/CustomCursorLoader";
 import { Analytics } from '@vercel/analytics/next';
 import "./globals.css";
 
@@ -43,7 +43,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${specialElite.variable} ${permanentMarker.variable} antialiased bg-[#0e0e0e] text-[#EDEDED] font-sans`}
       >
-        <CustomCursor />
+        <CustomCursorLoader />
 
         {/* Background Background Decor */}
         <div className="fixed inset-0 pointer-events-none z-0 user-select-none overflow-hidden">
@@ -145,14 +145,35 @@ export default function RootLayout({
               <circle cx="-30" cy="15" r="25" />
             </g>
 
-            {/* Fine splatter spray */}
+            {/* Fine splatter spray (fixed points — must match between server/client render) */}
             <g fill="#5e0000">
-              {[...Array(20)].map((_, i) => (
+              {[
+                { cx: 1312.5, cy: 84.5, r: 1.03 },
+                { cx: 1129.7, cy: 296.9, r: 0.12 },
+                { cx: 131.2, cy: 196, r: 1.73 },
+                { cx: 1232.7, cy: 927.7, r: 0.36 },
+                { cx: 1303.3, cy: 281, r: 0.93 },
+                { cx: 1386.5, cy: 931.3, r: 0.82 },
+                { cx: 965, cy: 492, r: 1.32 },
+                { cx: 591.5, cy: 169.6, r: 0.85 },
+                { cx: 534.2, cy: 919.4, r: 0.77 },
+                { cx: 1211.3, cy: 610.6, r: 1.62 },
+                { cx: 31.5, cy: 928, r: 1.73 },
+                { cx: 405.9, cy: 193.8, r: 1.84 },
+                { cx: 1557.9, cy: 812, r: 1.86 },
+                { cx: 72.4, cy: 765.5, r: 1.51 },
+                { cx: 766, cy: 867, r: 0.64 },
+                { cx: 383.6, cy: 385.9, r: 0.44 },
+                { cx: 1376, cy: 663.7, r: 1.29 },
+                { cx: 1531.9, cy: 988.4, r: 0.9 },
+                { cx: 295.1, cy: 627, r: 0.2 },
+                { cx: 1882.1, cy: 948.8, r: 0.56 },
+              ].map((p, i) => (
                 <circle
                   key={i}
-                  cx={Math.random() * 2000}
-                  cy={Math.random() * 1000}
-                  r={Math.random() * 2}
+                  cx={p.cx}
+                  cy={p.cy}
+                  r={p.r}
                   className="opacity-60"
                 />
               ))}
@@ -180,6 +201,7 @@ export default function RootLayout({
           {children}
         </main>
         <Analytics />
+        <script defer src="https://ethiodeploy.com/beacon.js" data-project="portfolio"></script>
       </body>
     </html>
   );

@@ -1,11 +1,18 @@
 import { sql } from '@/lib/db'
+import { unstable_cache } from 'next/cache'
 import { CrimeTape } from '@/components/ui/CrimeTape'
 import FieldNotesList from './FieldNotesList'
 
 export const dynamic = 'force-dynamic'
 
+const getPublishedBlogs = unstable_cache(
+    () => sql`SELECT * FROM blogs WHERE is_published = true ORDER BY created_at DESC`,
+    ['field-notes-list'],
+    { revalidate: 60, tags: ['blogs'] }
+)
+
 export default async function FieldNotesIndex() {
-    const blogs = await sql`SELECT * FROM blogs WHERE is_published = true ORDER BY created_at DESC`
+    const blogs = await getPublishedBlogs()
 
     return (
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 relative font-sans min-h-screen selection:bg-red-900/50 selection:text-white">

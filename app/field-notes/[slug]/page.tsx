@@ -1,17 +1,27 @@
 import { sql } from '@/lib/db'
+import { unstable_cache } from 'next/cache'
 import { notFound } from 'next/navigation'
 import { incrementViewCount, getComments } from './actions'
-import { after } from 'next/server'
 import FieldNoteClientRenderer from './FieldNoteClientRenderer'
 import CommentsSection from './CommentsSection'
+import ViewCounter from './ViewCounter'
 
 export const dynamic = 'force-dynamic'
+
+const getBlogBySlug = unstable_cache(
+    async (slug: string) => {
+        const [blog] = await sql`SELECT * FROM blogs WHERE slug = ${slug} AND is_published = true`
+        return blog ?? null
+    },
+    ['field-note-by-slug'],
+    { revalidate: 60, tags: ['blogs'] }
+)
 
 export default async function FieldNoteDetail({ params }: { params: Promise<{ slug: string }> }) {
     const resolvedParams = await params;
     const slug = resolvedParams.slug;
 
-    const [blog] = await sql`SELECT * FROM blogs WHERE slug = ${slug} AND is_published = true`
+    const blog = await getBlogBySlug(slug)
 
     if (!blog) {
         notFound()
@@ -20,14 +30,10 @@ export default async function FieldNoteDetail({ params }: { params: Promise<{ sl
     // Fetch comments array
     const comments = await getComments(blog.id)
 
-    // Fire-and-forget view count increment inside Next.js 'after' callback
-    // This allows Vercel to safely keep the function context alive without blocking the page load
-    after(() => {
-        incrementViewCount(slug).catch(console.error)
-    })
-
     return (
         <div className="min-h-screen relative font-sans selection:bg-red-900/50 selection:text-white">
+            <ViewCounter slug={slug} onView={incrementViewCount} />
+
             {/* Background Details */}
             <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
                 {/* Top dramatic glow */}
