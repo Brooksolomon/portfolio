@@ -180,6 +180,7 @@ export default function RootLayout({
           {children}
         </main>
         <Analytics />
+        <script defer src="https://ethiodeploy.com/beacon.js" data-project="portfolio"></script>
       </body>
     </html>
   );
