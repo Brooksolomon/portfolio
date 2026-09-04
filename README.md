@@ -94,3 +94,5 @@ Private / personal portfolio. All rights reserved.
 
 *“Every build is a calculated strike. Every line is a trace left behind.”*  
 — Modus Operandi
+
+<!-- pr flow test 2026-08-05T09:19:03Z -->
