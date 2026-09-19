@@ -16,10 +16,10 @@ export default function CommentsSection({ blogId, blogSlug, initialComments }: a
     const replyInputRef = useRef<HTMLTextAreaElement>(null)
 
     useEffect(() => {
-        let id = localStorage.getItem('case_404_anon_id')
+        let id = localStorage.getItem('case_707_anon_id')
         if (!id) {
             id = uuidv4()
-            localStorage.setItem('case_404_anon_id', id)
+            localStorage.setItem('case_707_anon_id', id)
         }
         setAnonId(id)
     }, [])

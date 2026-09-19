@@ -18,7 +18,7 @@ export default function SuspectPage() {
                 <div className="border-b-4 border-black pb-4 mb-6 sm:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
                     <div>
                         <h1 className="text-3xl sm:text-4xl md:text-5xl font-display uppercase tracking-tighter">Suspect Profile</h1>
-                        <p className="font-typewriter text-xs sm:text-sm mt-2">DEPARTMENT OF INVESTIGATION // CASE #404</p>
+                        <p className="font-typewriter text-xs sm:text-sm mt-2">DEPARTMENT OF INVESTIGATION // CASE #707</p>
                     </div>
                     <div className="text-left sm:text-right font-typewriter text-sm">
                         <p>DATE: {new Date().toLocaleDateString()}</p>
