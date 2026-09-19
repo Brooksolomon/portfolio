@@ -70,7 +70,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           letterSpacing: '0.3em',
           textTransform: 'uppercase',
         }}>
-          CASE #707: INTEL
+          CASE #606: INTEL
         </div>
 
         {/* Main Content Box */}
