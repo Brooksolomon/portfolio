@@ -1,16 +1,17 @@
-"use client";
-
-import { motion } from "framer-motion";
+import type { Metadata } from "next";
+import { FadeIn } from "@/components/ui/FadeIn";
 import { Polaroid } from "@/components/ui/Polaroid";
 import { Github, Linkedin, Send, Twitter } from "lucide-react";
+
+export const metadata: Metadata = {
+    title: "Suspect Profile — Brook Solomon",
+    description: "Full-stack developer profile: background, skills, and digital footprint of Brook Solomon (Solo codes).",
+};
 
 export default function SuspectPage() {
     return (
         <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5 }}
+            <FadeIn
                 className="bg-white text-black p-4 sm:p-6 md:p-8 shadow-2xl relative rotate-1 overflow-hidden"
                 style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/aged-paper.png')" }} // Optional paper texture
             >
@@ -114,7 +115,7 @@ export default function SuspectPage() {
                     </div>
                 </div>
 
-            </motion.div>
+            </FadeIn>
         </div>
     );
 }

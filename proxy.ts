@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifySessionToken, sessionCookieName } from '@/lib/auth'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     if (!request.nextUrl.pathname.startsWith('/admin')) {
         return NextResponse.next()
     }
@@ -32,8 +32,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
 }
 
-export const config = {
+export const proxyConfig = {
     matcher: [
-        '/((?!_next/static|_next/image|favicon.ico|.*\\\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }

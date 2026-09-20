@@ -1,8 +1,14 @@
+import type { Metadata } from 'next'
 import { sql } from '@/lib/db'
 import { CrimeTape } from '@/components/ui/CrimeTape'
 import FieldNotesList from './FieldNotesList'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+    title: 'Field Notes — Brook Solomon',
+    description: 'Classified archives: field reports and blog posts from Brook Solomon.',
+}
 
 export default async function FieldNotesIndex() {
     const blogs = await sql`SELECT * FROM blogs WHERE is_published = true ORDER BY created_at DESC`

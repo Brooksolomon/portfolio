@@ -1,17 +1,38 @@
+import type { Metadata } from 'next'
 import { sql } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import { incrementViewCount, getComments } from './actions'
 import { after } from 'next/server'
+import { cache } from 'react'
 import FieldNoteClientRenderer from './FieldNoteClientRenderer'
 import CommentsSection from './CommentsSection'
 
 export const dynamic = 'force-dynamic'
 
+const getBlog = cache(async (slug: string) => {
+    const [blog] = await sql`SELECT * FROM blogs WHERE slug = ${slug} AND is_published = true`
+    return blog
+})
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+    const { slug } = await params
+    const blog = await getBlog(slug)
+
+    if (!blog) {
+        return { title: 'Field Note Not Found — Brook Solomon' }
+    }
+
+    return {
+        title: `${blog.title} — Field Notes`,
+        description: `Field report filed ${new Date(blog.created_at).toLocaleDateString()}: ${blog.title}`,
+    }
+}
+
 export default async function FieldNoteDetail({ params }: { params: Promise<{ slug: string }> }) {
     const resolvedParams = await params;
     const slug = resolvedParams.slug;
 
-    const [blog] = await sql`SELECT * FROM blogs WHERE slug = ${slug} AND is_published = true`
+    const blog = await getBlog(slug)
 
     if (!blog) {
         notFound()

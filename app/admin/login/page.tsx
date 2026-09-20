@@ -33,10 +33,11 @@ export default async function LoginPage({
 
                 <form action={login} className="space-y-6 relative z-10">
                     <div>
-                        <label className="block text-xs font-mono uppercase tracking-widest text-gray-500 mb-2">
+                        <label htmlFor="email" className="block text-xs font-mono uppercase tracking-widest text-gray-500 mb-2">
                             Agent Email
                         </label>
                         <input
+                            id="email"
                             name="email"
                             type="email"
                             required
@@ -45,10 +46,11 @@ export default async function LoginPage({
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-mono uppercase tracking-widest text-gray-500 mb-2">
+                        <label htmlFor="password" className="block text-xs font-mono uppercase tracking-widest text-gray-500 mb-2">
                             Passcode
                         </label>
                         <input
+                            id="password"
                             name="password"
                             type="password"
                             required
