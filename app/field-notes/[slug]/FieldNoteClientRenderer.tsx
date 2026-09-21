@@ -149,7 +149,7 @@ export default function FieldNoteClientRenderer({ content, slug, title }: { cont
     // Reading History
     useEffect(() => {
         if (!slug || !title) return
-        const key = 'case_404_reading_history'
+        const key = 'case_808_reading_history'
         try {
             const raw = localStorage.getItem(key)
             let history: any[] = raw ? JSON.parse(raw) : []

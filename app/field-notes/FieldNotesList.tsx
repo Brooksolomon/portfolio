@@ -28,7 +28,7 @@ export default function FieldNotesList({ blogs }: { blogs: any[] }) {
 
     useEffect(() => {
         try {
-            const raw = localStorage.getItem('case_404_reading_history')
+            const raw = localStorage.getItem('case_808_reading_history')
             if (raw) setReadingHistory(JSON.parse(raw))
         } catch(e) {}
     }, [])

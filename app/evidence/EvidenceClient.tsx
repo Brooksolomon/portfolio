@@ -210,7 +210,7 @@ function EvidenceContent() {
                         Evidence Board
                     </h1>
                     <p className="text-gray-600 font-mono text-[10px] uppercase tracking-[0.4em] opacity-80">
-                        Classified Archive // Case File #404-B
+                        Classified Archive // Case File #808-B
                     </p>
                 </motion.div>
             </div>
