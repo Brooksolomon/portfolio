@@ -1,4 +1,4 @@
-# Case #808: The Developer
+# Case #404: The Developer
 
 > An unsolved mystery portfolio.  
 > **Solo Codes** — Brook Solomon
@@ -11,7 +11,7 @@ A themed portfolio built as a crime-scene investigation: red strings, polaroids,
 
 ## Features
 
-- **Crime Scene** — Hub with CASE #808 title and artifact links (Polaroid, Sticky Note, MO card, Evidence folder)
+- **Crime Scene** — Hub with CASE #404 title and artifact links (Polaroid, Sticky Note, MO card, Evidence folder)
 - **Suspect** — Profile page (mugshot, bio, psychological analysis, digital footprint)
 - **Evidence** — Project gallery with search, tech filters, and detail modals
 - **Modus Operandi** — Skills as “weapons” and “tactical assets” with linked evidence

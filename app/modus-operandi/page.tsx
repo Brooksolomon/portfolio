@@ -665,7 +665,7 @@ export default function ModusOperandi() {
                                     <h4 className="text-xs font-bold bg-black text-white inline-block px-1 mb-2">FIELD_INTEL</h4>
                                     <p className="text-sm leading-relaxed text-gray-800">
                                         Investigation of asset <span className="font-bold underline uppercase">{focusedSkill.name}</span> reveals extensive {focusedSkill.capabilities[0].toLowerCase()} capabilities.
-                                        Subject has been deployed in multiple high-stakes environments documented in Case #808-B.
+                                        Subject has been deployed in multiple high-stakes environments documented in Case #404-B.
                                     </p>
                                 </section>
 
