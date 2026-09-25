@@ -23,7 +23,7 @@ const permanentMarker = Permanent_Marker({
 });
 
 export const metadata: Metadata = {
-  title: "Case #404: The Developer",
+  title: "Case #505: The Developer",
   description: "An unsolved mystery portfolio.",
 };
 
