@@ -23,7 +23,7 @@ const permanentMarker = Permanent_Marker({
 });
 
 export const metadata: Metadata = {
-  title: "Case #404: The Developer",
+  title: "Case #505: The Developer",
   description: "An unsolved mystery portfolio.",
 };
 
@@ -71,7 +71,7 @@ export default function RootLayout({
             </g>
 
             {/* Bottom Right Pool */}
-            <g transform="translate(1600, 800) scale(1.5)" fill="#3a0404">
+            <g transform="translate(1600, 800) scale(1.5)" fill="#3a0505">
               <ellipse cx="0" cy="0" rx="60" ry="40" />
               <circle cx="50" cy="20" r="15" />
               <circle cx="-40" cy="-30" r="10" />
