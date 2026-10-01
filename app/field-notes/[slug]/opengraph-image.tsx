@@ -18,7 +18,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
 
   const title = blog?.title || 'Field Notes - Classified Intel'
   const date = blog?.created_at ? new Date(blog.created_at).toLocaleDateString() : new Date().toLocaleDateString()
-  const shortId = blog?.id ? blog.id.substring(0, 8) : '50505050'
+  const shortId = blog?.id ? blog.id.substring(0, 8) : '40404040'
 
   return new ImageResponse(
     (
@@ -70,7 +70,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           letterSpacing: '0.3em',
           textTransform: 'uppercase',
         }}>
-          CASE #505: INTEL
+          CASE #404: INTEL
         </div>
 
         {/* Main Content Box */}
