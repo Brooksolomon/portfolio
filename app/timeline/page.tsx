@@ -30,7 +30,7 @@ export default function TimelinePage() {
                         CHRONOLOGY
                     </h1>
                     <div className="flex items-center gap-6 mt-2 text-paper-yellow/40 font-mono text-[10px] uppercase tracking-widest">
-                        <span>Terminal: 0x505</span>
+                        <span>Terminal: 0x404</span>
                         <span>Status: Online</span>
                         <span>Connection: Secured</span>
                     </div>
